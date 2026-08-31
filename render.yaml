@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: anonymous-bot-v2
+    runtime: python
+    plan: free
+    buildCommand: pip install -r anonymous_bot/requirements.txt
+    startCommand: python -m anonymous_bot.bot
+    envVars:
+      - key: DISCORD_TOKEN
+        sync: false
+      - key: DISCORD_CLIENT_ID
+        sync: false
+      - key: DISCORD_CLIENT_SECRET
+        sync: false
+      - key: ANONYMOUS_APP_URL
+        sync: false
+      - key: DISCORD_REDIRECT_URI
+        sync: false
+      - key: ANONYMOUS_SESSION_SECRET
+        sync: false
+      - key: COOKIE_HTTPS_ONLY
+        value: "true"
+      - key: GAME_GUILD_ID
+        sync: false
+      - key: GAME_CHANNEL_ID
+        sync: false

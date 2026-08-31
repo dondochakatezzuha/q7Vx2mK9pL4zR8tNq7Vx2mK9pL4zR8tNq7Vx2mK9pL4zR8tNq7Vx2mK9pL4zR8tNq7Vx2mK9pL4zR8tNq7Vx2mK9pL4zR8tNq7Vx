@@ -1,0 +1,4 @@
+__pycache__/
+*.py[cod]
+.env
+anonymous_item_data.json

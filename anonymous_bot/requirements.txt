@@ -1,0 +1,6 @@
+discord.py>=2.4,<3
+google-genai>=1.0.0
+python-dotenv>=1.0.0
+groq>=0.30.0
+
+cerebras_cloud_sdk>=1.0.0
