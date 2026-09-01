@@ -843,6 +843,10 @@ Add meaningful configuration for the newer UI colors and other useful player pre
 
 Make the high/red danger state visually stronger and clearer while keeping the existing smooth full-UI danger effect and player privacy behavior.
 
+### 9. Enter Game navigation
+
+After the user clicks **Enter Game**, the Game Menu/pre-game page should close and the user should enter the actual Game interface. Do not leave the user stranded on the pre-game menu after successful entry.
+
 ---
 
 # 21. REGRESSION RULES
@@ -929,7 +933,7 @@ Examples of configuration include:
 The user's local repository path is currently:
 
 ```text
-C:\Users\maksi\Desktop\anonymous bot\BOT
+C:\Users\maksi\Desktop\anonymous bot\bot
 ```
 
 GitHub Desktop is connected to this repository.
@@ -938,7 +942,7 @@ The user's separate local `auto-sync.ps1` setup is intended to pull GitHub chang
 
 ```powershell
 while ($true) {
-    Set-Location "C:\Users\maksi\Desktop\anonymous bot\BOT"
+    Set-Location "C:\Users\maksi\Desktop\anonymous bot\bot"
     git pull origin main
     Start-Sleep -Seconds 30
 }
@@ -1020,3 +1024,317 @@ Do not recreate competing documentation unless there is a strong technical reaso
 When a significant feature, bug fix, architecture change, regression rule, AI behavior rule, navigation change, or project-direction decision is made, update this file so the next AI/developer can understand the project without rereading the entire repository.
 
 **Keep this file accurate. Keep it useful. Keep it focused on the actual bot/system.**
+
+---
+
+# 28. PROJECT BRAIN OPERATING RULES
+
+**Project Brain = `PLAN.md` = PB = P.B. = Plans.** These names all refer to the same Project Brain.
+
+The actual source code is the ultimate authority for what the software currently does. Project Brain describes that current state in human/AI-readable form.
+
+### Synchronization rule
+
+Whenever an approved code change changes an existing feature, architecture, navigation, endpoint, configuration behavior, regression rule, testing requirement, or other documented behavior, the AI **MUST update the corresponding Project Brain section** so `PLAN.md` accurately describes what actually exists in code.
+
+The AI must not invent implemented behavior, claim unfinished work is complete, or silently rewrite active requirements because it has an opinion.
+
+If code and Brain disagree, inspect the code first. If the difference is accidental or unresolved, document it as a known bug/regression rather than pretending the intended behavior exists.
+
+### Documentation consolidation
+
+`README.md`, `AI_README.md`, and `REGRESSION_POLICY.md` are consolidated into Project Brain. Do not recreate competing documentation systems unless technically necessary.
+
+Project Brain is for the BOT/RoR software and development system. Runtime campaign memory is separate and must not be confused with PB.
+
+---
+
+# 29. AI CONTEXT / TOKEN-SAVING RULES
+
+Read Project Brain first. Inspect only the code/data directly relevant to the current task.
+
+Do not automatically load the entire repository, ancient Discord history, the entire campaign database, unrelated source files, duplicate documentation, or large old message archives.
+
+Context priority:
+
+1. Current user request.
+2. Current relevant game/session state.
+3. Relevant Project Brain sections.
+4. Relevant structured lore/profile information.
+5. Small recent message/conversation window.
+6. Additional evidence only when required.
+
+The goal is **relevance-first context reduction**, not blindly cutting newest or oldest text.
+
+Future context-budget systems should support bounded recent messages, lore, records, characters, per-section character/token limits, total AI context limits, and provider/model-specific limits.
+
+---
+
+# 30. ADD.md — EXPLICIT USER-AUTHORIZED WORK INBOX
+
+`ADD.md` is an optional implementation inbox.
+
+The existence of `ADD.md` is **not permission to act**. The AI processes it only when the user explicitly asks it to process/show/implement the requests in the file.
+
+### Safety rules
+
+- `ADD.md` contains explicit user requests, not AI ideas.
+- Do not silently expand the requested scope.
+- Do not treat silence as approval.
+- Do not turn an AI opinion into an ADD request automatically.
+- If a request is ambiguous or conflicts with Project Brain, stop and explain the conflict instead of silently choosing.
+- Protect existing working systems and campaign data.
+- If implementation fails or is partial, **do not clear the unfinished request**.
+- Preserve unfinished portions for later.
+- Clear a request only after successful implementation and verification.
+- After successful implementation, synchronize Project Brain and the Update Log before clearing the completed request.
+- Never place secrets in `ADD.md`.
+
+Recommended structure:
+
+```md
+# ADD — WORK QUEUE
+
+<!-- Put explicit user-authorized work requests below this line. -->
+```
+
+Lifecycle:
+
+```text
+User writes request
+      ↓
+User explicitly asks AI to process ADD.md
+      ↓
+AI reads ADD.md + relevant Project Brain sections
+      ↓
+AI inspects relevant code
+      ↓
+AI implements only the requested work
+      ↓
+AI verifies it
+      ↓
+Project Brain synchronized
+      ↓
+Update Log entry created
+      ↓
+Completed request cleared
+```
+
+---
+
+# 31. IDEAS — AI OPINIONS AND SUGGESTIONS ONLY
+
+`IDEAS` is where AI suggestions, recommendations, critiques, optimizations, UX suggestions, performance suggestions, maintainability suggestions, and opinions belong.
+
+**If the AI wants to give an opinion about improving the project, that opinion belongs in IDEAS.** It must not silently become an active requirement.
+
+After a meaningful update, AI may suggest useful ideas. If there is nothing genuinely useful to suggest, it should add nothing.
+
+### Ideas safety
+
+- Ideas are suggestions only.
+- AI must not automatically implement an Idea.
+- AI must not automatically approve or promote an Idea.
+- Explicit user approval is required before an Idea becomes active work.
+- Approval is never inferred from silence.
+- Check existing Ideas before suggesting duplicates.
+- Ideas include creation version and timestamp.
+- Stale Ideas are marked `Outdated` rather than silently deleted.
+- Replaced Ideas are marked `Superseded` with the replacement identified.
+
+Supported statuses:
+
+- `Suggested`
+- `Approved`
+- `Implemented`
+- `Rejected`
+- `Outdated`
+- `Superseded`
+
+Suggested format:
+
+```md
+### Idea — v1.x — YYYY-MM-DD HH:MM UTC
+**Idea:** ...
+**Why:** ...
+**Impact:** Low / Medium / High
+**Risk:** Low / Medium / High
+**Status:** Suggested
+```
+
+### Website Ideas integration
+
+The website's Ideas area should eventually display the **same Project Brain Ideas**, not create an independent AI-controlled idea database.
+
+The website may let the user explicitly approve, reject, or retain an Idea. Approval must always be a deliberate user action. The AI must never silently promote an Idea through the website.
+
+---
+
+# 32. SINGLE UPDATE LOG / VERSIONING
+
+Project Brain uses **one chronological Update Log inside `PLAN.md`**. Do not create a new note file for every update.
+
+Each meaningful update should record:
+
+- version;
+- exact timestamp;
+- added/fixed/changed summary;
+- verification notes when useful.
+
+### Version policy
+
+- `v1.0` is the initial baseline.
+- Normal meaningful changes increment the minor version: `v1.1`, `v1.2`, `v1.3`, etc.
+- `v2.0` is reserved for a genuinely major update, such as a substantial architecture/system overhaul.
+- Do not jump to `v2.0` merely because many minor versions exist.
+- Trivial edits do not need their own product version unless part of a meaningful update.
+- Never rewrite old history just to make it look cleaner.
+
+The current-state sections describe **what exists now**. The Update Log describes **how it got there**.
+
+---
+
+# 33. RECENT USER-REQUESTED ACTIVE WORK — CONSOLIDATED
+
+These requirements remain active until implemented and verified. They are not claims that they are already fixed.
+
+### Main OST
+
+- Randomly select a Main OST track from the Main OST pool rather than looping/repeating the same track.
+- Main OST should begin when the website opens, subject to browser autoplay/user-gesture restrictions.
+- Do not let character/NPC themes silently replace the global Main OST.
+
+### Game-session music detection
+
+- Music/mood detection must run **ONLY during an active Game session**.
+- Ordinary General/OOC activity must not trigger continuous music detection.
+- Music detection must never block normal message sending.
+
+### Session controls
+
+- Start Session currently works from the user's perspective.
+- End Session needs fixing so the full Discord-backed end flow actually closes the session.
+- The website must reflect real Discord success/failure rather than pretending a session changed.
+- End-of-session review failure must not undo a successful session close.
+
+### Sidebar
+
+- Restore category/channel collapse/expand.
+- The regression appeared after the sidebar-hider update.
+- Fix collapse without breaking sidebar hiding.
+
+### Discord message performance
+
+- Discord should retain its complete history.
+- The website should show a sensible recent message window instead of repeatedly reloading ancient history.
+- New messages should arrive through live events/SSE when available.
+- Old history should be loaded only when explicitly needed.
+- Do not repeatedly re-download huge historical message sets on normal refreshes.
+- Do not feed ancient message archives into every AI request.
+
+### Game menu / navigation
+
+- The Game menu GUI should expose Settings correctly.
+- **After clicking Enter Game, the Game Menu/pre-game page should close and the user should enter the actual Game interface.**
+- Do not leave the user stranded on the pre-game menu after successful entry.
+
+### Player Settings
+
+- Player Settings needs more useful configuration.
+- Newly introduced UI colors should be user-configurable.
+- Preserve explicit Save behavior for persistent settings.
+- Temporary control changes must not silently become saved preferences unless intended.
+
+### Danger meter
+
+- The high/red danger state needs stronger, clearer visual communication.
+- Preserve the existing dark-fantasy UI and smooth full-interface transition.
+- Preserve player privacy: players see the danger visual effect, not the numeric percentage/explanation unless that rule is explicitly changed.
+
+### UI direction
+
+- The current UI is considered very good.
+- Do not redesign it unnecessarily while fixing these issues.
+- Prefer focused fixes that preserve the established visual identity and working interactions.
+
+---
+
+# 34. HARD AI SAFETY / REGRESSION POLICY
+
+Before changing code:
+
+1. Read the relevant Project Brain section.
+2. Identify the smallest relevant subsystem.
+3. Inspect the smallest relevant source/tests.
+4. Make the smallest safe change that satisfies the request.
+5. Protect secrets and runtime campaign data.
+6. Test the changed behavior and likely regressions.
+7. Synchronize Project Brain with actual code behavior.
+8. Record a meaningful update in the single Update Log.
+
+The AI must not:
+
+- silently add unrelated features;
+- silently redesign working UI;
+- claim a feature works without verification;
+- expose GM-only information to players;
+- expose secrets or credentials;
+- casually modify live campaign databases as part of a code-only change;
+- delete unfinished ADD requests;
+- implement Ideas without explicit approval;
+- treat AI opinions as requirements;
+- recreate README/AI_README/REGRESSION_POLICY as competing sources of truth;
+- overwrite newer user work when a repository conflict is detected.
+
+If a repository/file version conflict occurs, re-fetch the latest version before attempting an overwrite. Never blindly overwrite a newer version.
+
+---
+
+# 35. CURRENT LOCAL GIT / AUTO-SYNC NOTE
+
+The user's actual local repository path is:
+
+```text
+C:\Users\maksi\Desktop\anonymous bot\bot
+```
+
+The local `auto-sync.ps1` convenience script pulls `origin/main` approximately every 30 seconds:
+
+```powershell
+while ($true) {
+    Set-Location "C:\Users\maksi\Desktop\anonymous bot\bot"
+    git pull origin main
+    Start-Sleep -Seconds 30
+}
+```
+
+This is **not bot runtime code**. It is a local GitHub → PC synchronization convenience. GitHub changes can therefore appear in the local repository automatically while the script is running. Local changes still require normal Git commit/push behavior to reach GitHub.
+
+Do not treat auto-sync as a substitute for backups, testing, commits, or resolving local working-tree conflicts.
+
+---
+
+# 36. UPDATE LOG
+
+## v1.0 — 2026-09-01
+
+### Project Brain consolidation and recent requirements
+
+- Confirmed `PLAN.md` as **Project Brain = PB = P.B. = Plans** and the one real source of truth.
+- Preserved the existing bot/system architecture, Discord command guide, website navigation, security, campaign memory, AI system, music system, danger system, player settings, UI design contract, testing rules, regression rules, and development workflow.
+- Consolidated the former `README.md`, `AI_README.md`, and `REGRESSION_POLICY.md` documentation roles into Project Brain.
+- Added code-to-Brain synchronization so implemented feature changes update the corresponding Brain description to match actual code.
+- Added explicit AI context/token-saving rules.
+- Added the `ADD.md` explicit-user-request work queue with strict failure/partial-completion safety.
+- Added the AI-only `IDEAS` system, including the rule that AI opinions belong in Ideas and are never automatically implemented.
+- Added shared website Ideas integration with explicit user approval.
+- Added the single timestamped versioned Update Log policy and reserved `v2.0` for genuinely major changes.
+- Consolidated the user's active Main OST, music detection, End Session, sidebar, Discord message performance, Game Menu Settings, Enter Game navigation, Player Settings/color customization, danger meter, and UI-preservation requirements.
+- Corrected the documented local repository path to `C:\Users\maksi\Desktop\anonymous bot\bot`.
+- Documented the local GitHub → PC auto-sync as a convenience mechanism rather than bot runtime behavior.
+
+### Safety
+
+- AI must preserve working systems, campaign data, secrets, permissions, GM/player separation, and user-approved scope.
+- AI opinions are suggestions only; explicit user approval is required before implementation.
+- `ADD.md` requests are not cleared unless successfully implemented and verified.
