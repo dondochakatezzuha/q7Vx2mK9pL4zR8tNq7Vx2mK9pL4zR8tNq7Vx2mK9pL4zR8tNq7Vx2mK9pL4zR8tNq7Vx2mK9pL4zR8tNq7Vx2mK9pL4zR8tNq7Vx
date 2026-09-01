@@ -1,258 +1,875 @@
-# 🧠 PROJECT BRAIN — Anonymous RPG Bot / RoR
+# 🧠 PROJECT BRAIN — Anonymous RPG Bot / Regnum of Regalia
 
-> **This is the single source of truth for AI-assisted work on this project.**
-> Read this file first. Do not automatically read the other documentation files that were consolidated into it.
+> **Single source of truth for AI-assisted development, project understanding, navigation, architecture, Discord behavior, and current plans.**
+>
+> Read this file first. Do not automatically read other documentation. Inspect source files only when a task requires them, and then inspect the smallest relevant set.
 
-## 1. Project purpose
+---
 
-Anonymous RPG Bot / RoR is a Discord-backed RPG companion with a game-first web client. It combines Discord campaign communication, persistent campaign/world memory, live game sessions, music/audio, character/player features, GM controls, and AI-assisted lore interaction.
+# 1. WHAT THIS PROJECT IS
 
-The project is one evolving product, not a sequence of replacement demos. New work should preserve working behavior unless the user explicitly asks to replace it.
+**Anonymous Bot / Regnum of Regalia (RoR)** is a Discord-backed RPG campaign system with a game-first web application.
 
-### Main project areas
+It has two connected faces:
 
-- `anonymous_bot/` — Discord bot and web-server/backend code.
-- `Anonymous_BotV2/` — game-first web interface.
-- `campaign_data/` — persistent campaign database/world state and web audio assets.
-- `tests/` — regression and UI integrity checks.
-- `anonymous_bot/.env` — private local credentials; never share or commit secrets.
-- `anonymous_bot/.env.example` — configuration template for a new installation.
-- `render.yaml` — optional Render deployment configuration.
-- `START_EVERYTHING.bat` — the intended single launcher.
+1. **Discord bot** — the primary Discord-side RPG/game engine, command interface, campaign archive, economy, items, parties, dungeons, GM controls, AI, lore collection, and campaign automation.
+2. **Web game client** — a browser UI that authenticates through Discord, displays the campaign/game state, mirrors Discord game/general chat, exposes player tools, and gives GMs a richer campaign control surface.
 
-Do not put actual passwords, API keys, Discord tokens, OAuth secrets, or other private credentials in this file.
+The two sides share campaign state and communicate through the backend. Discord remains the actual Discord authority for Discord-backed actions such as channel permissions and Discord messages.
 
-## 2. AI reading and context rules
+The project is one evolving product. Preserve working behavior unless the user explicitly asks to replace it.
 
-### Primary rule
-Start with `PLAN.md`. Treat it as the authoritative project overview, development contract, current backlog, and AI behavior guide.
+---
 
-Do **not** automatically read `README.md`, `AI_README.md`, or `REGRESSION_POLICY.md`; their useful contents have been consolidated here. Those files are no longer separate sources of truth.
+# 2. REPOSITORY MAP
 
-Only inspect source files when the user's specific task requires them. Open the minimum relevant files needed to understand or implement that task.
+```text
+BOT/
+├── PLAN.md                         ← THIS FILE: project Brain / source of truth
+├── START_EVERYTHING.bat            ← intended one-click launcher
+├── render.yaml                     ← optional deployment configuration
+├── .gitattributes
+│
+├── anonymous_bot/                  ← Python Discord bot + web backend
+│   ├── bot.py                      ← Discord bot entry point and event lifecycle
+│   ├── config.py                   ← environment/configuration
+│   ├── state.py                    ← shared state helpers
+│   ├── web_app.py                  ← HTTP server, Discord OAuth, web APIs, SSE bridge
+│   ├── requirements.txt
+│   ├── .env.example                ← safe configuration template
+│   ├── core/
+│   │   ├── campaign_store.py       ← persistent campaign/SQLite storage + backups
+│   │   └── lore_index.py            ← structured lore/entity index
+│   └── features/
+│       ├── anonymous.py             ← anonymous messaging features
+│       ├── ai_channel.py            ← administrator AI Discord channel
+│       ├── ai_providers.py          ← AI provider/model selection and fallbacks
+│       ├── companions.py            ← companion system
+│       ├── create.py                ← character/player creation features
+│       ├── dungeon.py               ← dungeon gameplay
+│       ├── economy.py               ← currency, shop, stocks, gambling
+│       ├── equipment.py             ← equipment/equip/use
+│       ├── gm_tools.py              ← major GM/admin campaign controls
+│       ├── groups.py                ← group chats
+│       ├── hell.py                  ← Hell event/system
+│       ├── help_ui.py               ← categorized Discord command help
+│       ├── item_art.py              ← item artwork helpers
+│       ├── item_cards.py            ← item card presentation
+│       ├── items.py                 ← items/inventory/catalog system
+│       ├── main_ui.py               ← main Discord campaign UI
+│       ├── memory.py                ← campaign memory/archive/retrieval
+│       ├── rpg.py                   ← RPG/player mechanics
+│       ├── server_lore.py            ← automatic Discord lore archive/backfill
+│       ├── trade.py                 ← player trading
+│       ├── ui.py                    ← small UI helper module
+│       └── gm/                      ← GM-specific AI/assistant code
+│
+├── Anonymous_BotV2/
+│   └── index.html                   ← large game-first web client
+│
+├── campaign_data/                  ← persistent campaign/world data + web audio
+│   ├── campaign.db                 ← SQLite campaign store
+│   ├── web_world_state.json        ← web/game world state
+│   ├── web_audio/                  ← server music library
+│   └── other campaign JSON/assets
+│
+├── tests/                          ← UI/web regression checks
+└── .venv/                          ← local Python environment (should not be treated as source)
+```
 
-### Context/token discipline
+The repository currently contains the Python application, the single-page web UI, campaign data, audio, and tests. Do not confuse `.venv` with project source.
 
-Do not load the entire repository into an AI prompt just because it exists. Prefer:
+---
 
-1. This Brain.
-2. The specific feature/bug requested.
-3. The smallest relevant set of source files.
-4. Relevant tests/configuration only when needed.
+# 3. HOW THE SYSTEM STARTS
 
-Do not dump ancient Discord history, unrelated source code, or duplicate documentation into an AI context merely for completeness.
+The intended Windows launcher is **`START_EVERYTHING.bat`**.
 
-### Development behavior
+Startup sequence:
 
-- Preserve existing working functionality.
-- Prefer small, targeted changes over unnecessary rewrites.
-- Do not change unrelated files.
-- Before a large refactor, explain why it is needed.
-- Never add a visible UI control unless it has a working action, a clear disabled state, or an explicit "coming with music pack" label.
-- Verify a button's server request and success/failure feedback before considering it complete.
-- Keep desktop and mobile usability intact.
-- Use the web audio engine for UI button feedback and respect the global mute control.
-- Player-facing settings are persisted only when the player explicitly saves them.
-- Never put private credentials, campaign data, or uploaded music into a handoff package.
-- When a feature is completed, update this Brain with the result and remaining work.
+```text
+START_EVERYTHING.bat
+        │
+        ├── find project Python / .venv
+        ├── verify Python 3.11+
+        ├── install requirements if needed
+        ├── start Ollama if installed and not already running
+        │
+        └── start `python -m anonymous_bot.bot`
+                         │
+                         ├── initialize campaign store
+                         ├── initialize lore index
+                         ├── load/register Discord features
+                         ├── connect to Discord
+                         ├── start web server
+                         └── wait for Discord + campaign guild readiness
+                                      │
+                                      └── open local web client
+```
 
-## 3. Product direction / UI contract
+The launcher intentionally does **not** consider the website healthy merely because HTTP responds. Discord readiness and configured campaign-guild readiness matter too.
 
-The website is a **game-first RPG companion**, not an admin dashboard. The primary screen should be understandable without reading documentation.
+The bot has a restart loop for unexpected Discord/network failures. It creates a fresh Discord client after a failed run instead of reusing a client whose HTTP session may be closed.
 
-The current UI direction is good and should be preserved. Do not redesign it unnecessarily.
+---
 
-### Protected UI behavior
+# 4. DISCORD BOT ARCHITECTURE
 
-- GM quick-control panel stays on the Game page.
-- GM Chat is GM-only and exists only on the GM Chat page.
-- General uses Discord channel `1535189087282008114`.
-- Game uses Discord channel `1535189087282008118`.
-- Character navigation remains `Character` and has no Age field.
-- Player pages never expose GM controls or GM-only data.
-- Danger percentage/explanation is hidden from players; only the visual effect is shown.
-- Preserve the neutral black/gray/red visual direction while improving weak visual treatment when specifically requested.
-- Discord OAuth/session and tester-GM authorization must remain intact.
-- Navigation should remain usable on narrow/mobile screens.
-- Decorative RPG role icons and visual command/status treatments are CSS-only cues; they must not become extra controls or obscure existing actions.
+`anonymous_bot/bot.py` is the central Discord application entry point.
 
-### Chat formatting
+It creates a `discord.py` `commands.Bot` with:
 
-Chat deliberately supports lightweight RPG emphasis only:
+- member intents enabled,
+- message-content intent enabled,
+- prefix `!` for legacy/prefix compatibility,
+- application/slash commands registered through feature modules.
 
-- `**word**` → bold.
-- `*word*` → italic when the marker directly touches a letter.
-- Spaced markers such as `* word *` remain plain text.
-- Escape message text before adding formatting tags.
+During `setup_hook()`, the bot initializes the campaign store and lore index, then registers feature modules.
 
-## 4. Backend and web contracts
+Registered major systems:
 
-Important existing endpoints/contracts to preserve unless a change explicitly replaces them:
+- anonymous messaging
+- RPG mechanics
+- items
+- trading
+- character creation
+- economy
+- dungeon
+- equipment
+- main Discord UI
+- GM tools
+- GM AI assistant
+- help/dashboard
+- campaign memory
+- companions
+- Hell events
 
-- `GET /api/session` — signed-in user, GM role, and character.
-- `GET /api/world` — session/world state and audio state.
-- `POST /api/gm/session` — GM session toggle.
-- `GET /api/channel-messages` and `POST /api/messages` — game-channel chat.
-- `GET /api/social?kind=ooc` and `POST /api/social/ooc` — General chat.
-- `POST /api/social/settings` — explicit player settings persistence.
-- `POST /api/gm/audio` — GM audio asset upload/play/stop.
+The bot centralizes errors for application commands, Discord UI views, and modals so users receive a usable error instead of Discord's generic interaction-failed state.
 
-### Session behavior
+### Discord event flow
 
-Starting or ending a session from the website is Discord-backed. A session action must change the configured game-channel permission and publish the session announcement. If the bot cannot complete that work, the website must report an error instead of pretending a web-only session occurred.
+Every incoming Discord message passes through several relevant systems:
 
-The end-of-session review post is optional: if it fails, that must not prevent the session from being marked closed after the Discord channel lock succeeds.
+```text
+Discord message
+      │
+      ├── web bridge records General/Game message
+      ├── server-lore archive
+      ├── administrator AI channel handler
+      ├── GM `g:` handler / confirmation flow
+      ├── DM or server memory archive
+      ├── Hell handler
+      └── companion handler
+```
 
-### Health/launch behavior
+Bots are excluded from most user-facing processing to avoid loops/noise.
 
-`/healthz` and `START_EVERYTHING.bat` are healthy only when the Discord bot event loop and configured campaign guild are ready. A responding web server by itself is a failure state.
+On Discord `on_ready()` the bot:
 
-Diagnostics should include image/attachment-relevant Discord permissions.
+- starts the web app,
+- ensures the administrator-only AI channel exists,
+- syncs structured entity profiles into the lore index,
+- cleans stale guild-specific command registrations,
+- syncs the current global command tree,
+- starts background server-lore backfill,
+- restores scheduled game starts,
+- restores Hell states,
+- starts GM spawn scheduling,
+- starts the stock-market task when available,
+- sets Discord presence to `Anonymous RPG`.
 
-`START_EVERYTHING.bat` is the single intended launcher. It uses the project `.venv` first, then a validated Python 3.11+ installation. Do not add duplicate launcher scripts.
+---
 
-## 5. Music system
+# 5. DISCORD CHANNELS / CAMPAIGN ROLES
 
-The server music library is grouped as supplied:
+Configured campaign guild:
 
-- `action` — 47
-- `calm` — 28
-- `dark` — 42
-- `funny` — 25
-- `main_ost` — 32
-- `sad` — 33
-- `scary` — 29
+- Guild ID: `1535189086258855946`
+- **General/OOC:** `1535189087282008114`
+- **Game:** `1535189087282008118`
 
-It is indexed recursively on startup and served from `campaign_data/web_audio/`.
+The website and bot treat the Game channel as the live RPG session channel and General as the normal/OOC campaign channel.
 
-### Intended music behavior
+GM permissions are based on configured GM IDs, not simply Discord administrator status. The web client separately uses configured tester-GM IDs for web testing.
 
-- Main OST should be selected automatically from the `main_ost` group rather than repeatedly using the same track.
-- The user wants the Main OST to begin when the game/site opens; preserve the intended global/main behavior while ensuring game-session-only detection remains separate.
-- When a track changes, fade the previous server soundtrack down and fade the next one in.
-- Do not leave stale library records pointing at files that were moved or removed.
-- Theme-song assignments for players and NPCs are stored separately and must never silently overwrite the global Main OST.
-- AI music/lore detection must operate **only during active game sessions**. It should not continuously react to ordinary/non-session chat.
-- AI mood classification must never block sending a message.
-- Clear scenes may map to `action`, `calm`, `dark`, `funny`, `main_ost`, `sad`, or `scary`; uncertain chatter should do nothing.
+The administrator-only AI channel is ensured by the bot at startup.
 
-## 6. AI and campaign-lore behavior
+Never expose GM-only information to normal players just because someone has broad Discord permissions.
 
-The AI is used for campaign lore, continuity, summaries, NPCs, characters, factions, locations, items, mysteries, brainstorming, dialogue, encounters, worldbuilding, GM preparation, and bot/technical questions.
+---
 
-Suggestions must be labeled as suggestions. Never silently create canon or alter game state.
+# 6. DISCORD COMMAND GUIDE
 
-### Canon authority
+The actual command guide is generated by `features/help_ui.py`. Players can use:
 
-- Clear GM canon statements are authoritative.
-- If a clear GM canon statement corrects a previous answer, accept the correction immediately.
-- Never defend an outdated answer because an archive or AI summary disagrees with a later GM correction.
-- Never turn an inference into canon; explicitly state uncertainty.
-- Do not invent acronyms, expansions, abilities, motivations, relationships, factions, or lore because a term is unfamiliar.
-- Player corrections can help locate evidence but do not override established GM canon.
-- If the current administrator is not a configured GM/writer, do not treat their statements as authoritative canon merely because they have Discord admin permissions.
-- Obvious GM jokes, tests, questions, roleplay, hypotheses, and speculation are not automatically canon.
-- A GM asking a question is not itself a canon declaration.
-- If a deliberately false GM test is revealed as a test/joke, discard it as canon immediately.
-- Do not use numeric confidence scores as permission to override a clear later GM correction.
+- `/help open` — open the categorized command guide.
+- `/help command` — explain one command.
+- `/dashboard` — personal campaign dashboard.
 
-### Chronology and identity
+### Campaign
 
-- Later clear GM corrections supersede earlier claims about the current state while preserving historical truth.
-- A newer session recap must not rewrite an older session.
-- Questions about a specific session must be answered from that session's record.
-- "First session", "first ever session", or "session 1" means Session #1 specifically. If it is not recorded, say so.
-- Chronology questions must be answered chronologically.
-- Structured profiles are primary for entity questions: summary, backstory, origin, role, facts, relationships, status, sessions, first/last appearance, death, and player/character lifecycle should be preferred over generic raw message matches.
-- For "who is X" / "tell me about X", explain the structured profile first and then only directly relevant evidence.
-- For "what happened last time X played", use the player/character activity record for the latest session in which that player/character had recorded activity.
-- A Discord player and their in-world characters are separate identities. A player may have multiple characters; a dead character remains dead and a replacement is a new character instance with its own history.
-- GM-only hidden plot information is GM-only and must never leak into player-facing lore responses.
+- `/main`
+- `/dashboard`
+- `/admin game start`
+- `/admin game cancel`
+- `/admin game end`
+- `/game status`
+- `/attendance check-in`
+- `/attendance check-out`
+- `/admin attendance view`
+- `/admin session event`
+- `/admin session summary`
+- `/admin session history`
 
-### Known canon corrections
+### Bounties
+
+- `/bounty list`
+- `/bounty place`
+- `/admin bounty create`
+- `/bounty info`
+- `/admin bounty edit`
+- `/bounty claim`
+- `/admin bounty complete`
+- `/admin bounty cancel`
+- `/bounty history`
+- `/admin bounty remove`
+
+### Items / Inventory
+
+- `/admin item create`
+- `/admin item edit`
+- `/item rarities`
+- `/item claim`
+- `/item info`
+- `/item catalog`
+- `/admin item catalog-remove`
+- `/inventory inventory`
+- `/inventory give`
+- `/inventory secure`
+- `/inventory unsecure`
+- `/inventory secure-held`
+- `/inventory steal`
+- `/inventory rename`
+- `/admin inventory take`
+- `/admin inventory inventory-view`
+
+### Item drops / GM RNG tools
+
+- `/admin item rng-start`
+- `/admin item rng-stop`
+- `/admin item dm-start`
+- `/admin item dm-stop`
+- `/admin item status`
+- `/admin item force-random`
+- `/admin item force`
+- `/admin item dm-force-random`
+- `/admin item dm-force`
+- `/admin item dm-time`
+- `/admin item dm-chance`
+
+> Important current behavior: automatic item RNG was removed. GM-created spawn timers are the automatic spawn mechanism. Do not reintroduce background item RNG unless explicitly requested.
+
+### Factions / reputation
+
+- `/faction info`
+- `/admin faction create`
+- `/faction join`
+- `/faction donate`
+- `/reputation view`
+- `/admin reputation set`
+- `/admin reputation add`
+- `/admin reputation player`
+
+### Party
+
+- `/party create`
+- `/party invite`
+- `/party join`
+- `/party leave`
+- `/party info`
+
+### Secrets / story
+
+- `/story secret-channel`
+- `/story traitor-channel`
+- `/story dead-drop`
+- `/admin story objective`
+- `/story my-objective`
+- `/admin story objective-complete`
+- `/admin story objective-clear`
+- `/admin story start-ballot`
+- `/story ballot-status`
+- `/anonymous send`
+- `/anonymous dm`
+- `/anonymous one-time`
+
+### Economy
+
+- `/economy balance`
+- `/economy overview`
+- `/economy values`
+- `/economy shop`
+- `/economy buy`
+- `/economy sell`
+- `/economy give`
+- `/economy stocks`
+- `/economy invest`
+- `/economy sell-stock`
+- `/economy gamble`
+- `/economy gambling`
+- `/gm`
+- `/gm-economy`
+- `/admin economy shop-add`
+- `/admin economy shop-vip`
+- `/admin economy shop-remove`
+- `/admin economy shop-price`
+- `/admin economy stock-create`
+- `/admin economy stock-increase`
+- `/admin economy stock-decrease`
+
+### Companion
+
+- `/companion hub`
+- `/companion name`
+
+### Dungeon
+
+- `/dungeon open`
+- `/dungeon move`
+- `/dungeon event`
+- `/dungeon fight`
+- `/dungeon search`
+- `/dungeon leaderboard`
+- `/admin dungeon lock-floor`
+- `/admin dungeon unlock-floor`
+
+### Equipment / trading
+
+- `/equipment equip`
+- `/equipment unequip`
+- `/equipment use`
+- `/equipment view`
+- `/trade start`
+- `/trade add`
+- `/trade remove`
+- `/trade money`
+
+### Memory / lore archive
+
+- `/memory search`
+- `/memory info`
+- `/gm-memory channel`
+- `/gm-memory priority`
+- `/gm-memory backfill`
+- `/gm-memory suggestions`
+- `/gm-memory delete`
+
+Memory commands are role-sensitive; GM-only records must stay hidden from players.
+
+### Administration / Hell
+
+- `/admin panel`
+- `/admin gm-panel`
+- GM Hell controls: start Hell event, lock Hell, turn messages on/off, view message status.
+- `/admin clear`
+
+---
+
+# 7. WEBSITE: HOW TO NAVIGATE
+
+The browser client is `Anonymous_BotV2/index.html` and is a game-first single-page UI.
+
+The left sidebar is the primary navigation. The header contains session status, sidebar toggle, Main shortcut, music mute, and General shortcut.
+
+## Main player navigation
+
+- **Game** — primary live RPG screen; Game chat, current session state, game-side information, danger presentation, music/session UI, and GM quick controls when authorized.
+- **Character** — the player's current character information. It intentionally has no Age field.
+- **Inventory** — owned items and item-related player controls.
+- **General** — OOC/general campaign chat.
+- **Private Chats** — direct/private campaign conversations.
+- **Group Chats** — group conversations.
+- **Death** — death/death-state information and related UI.
+- **World** — world information/codex-style content.
+- **Aro** — Aro-related player/world information.
+- **Character Codex** — character/entity reference information.
+- **Notifications** — campaign notifications.
+- **World Lore** — accessible campaign lore.
+- **Announcements** — campaign announcements.
+- **Rules** — campaign/game rules.
+- **Loot Drop** — loot-drop information.
+- **Game Ideas** — campaign/game ideas.
+- **Settings** — player-facing settings.
+
+## GM-only website navigation
+
+These are hidden unless the authenticated viewer is recognized as a GM:
+
+- **World Loom** — GM world/story construction tools.
+- **Events & History** — campaign event/history controls.
+- **World Map** — GM map controls/presentation.
+- **Scene Studio** — scene construction/presentation.
+- **Regional Atmosphere** — region-based atmosphere controls.
+- **Economy & Currencies** — GM economy controls.
+- **GM Admin Center** — administrative campaign controls.
+
+GM Chat is GM-only and belongs on the GM Chat page; do not move it into the player Game page.
+
+### Sidebar behavior
+
+The sidebar can be hidden with the header sidebar toggle. Category/channel collapsing is intended behavior and is currently a known regression to fix.
+
+On small screens the sidebar becomes a horizontally scrolling sticky navigation bar and the Game layout becomes stacked.
+
+---
+
+# 8. WEBSITE GAME PAGE
+
+The Game page is the primary RPG interface.
+
+Typical structure:
+
+```text
+Game
+├── Game / Discord-backed chat
+│   ├── visibility controls
+│   ├── message list
+│   ├── attachments
+│   ├── replies / message actions
+│   └── composer
+│
+└── right-side game information
+    ├── current campaign/session information
+    ├── danger/world-state presentation
+    ├── GM quick controls (GM only)
+    └── other live campaign cards
+```
+
+The web UI receives live state using server-sent events (SSE) when available and has slower polling/recovery behavior as fallback.
+
+Game messages arriving over SSE are appended to the local recent-message list rather than forcing a full historical reload.
+
+---
+
+# 9. AUTHENTICATION AND SECURITY
+
+The website authenticates through **Discord OAuth2**.
+
+High-level flow:
+
+```text
+Browser
+  ↓
+Discord OAuth login
+  ↓
+OAuth callback
+  ↓
+server verifies Discord identity
+  ↓
+server determines player/GM authorization
+  ↓
+signed HttpOnly session cookie
+  ↓
+web API requests
+```
+
+The browser never receives the Discord client secret or bot token.
+
+The web session uses a signed cookie (`anon_session`) with HttpOnly/SameSite behavior and Secure when configured for HTTPS.
+
+Configuration is loaded from `.env` / environment variables. Important private values include:
+
+- `DISCORD_TOKEN`
+- `DISCORD_CLIENT_ID`
+- `DISCORD_CLIENT_SECRET`
+- `ANONYMOUS_SESSION_SECRET` / `WEB_SESSION_SECRET`
+- AI provider API keys
+- optional GitHub token and other provider credentials
+
+**Never put real secrets in PLAN.md, GitHub commits, handoff packages, screenshots, or player-visible UI.**
+
+The safe template is `anonymous_bot/.env.example`.
+
+---
+
+# 10. WEB ↔ DISCORD REQUEST FLOW
+
+The web server in `web_app.py` bridges the authenticated browser to Discord/campaign state.
+
+Important endpoints/contracts include:
+
+- `GET /api/session` — authenticated identity, GM role, and character.
+- `GET /api/world` — current world/session/audio state.
+- `POST /api/gm/session` — GM start/end session action.
+- `GET /api/channel-messages` — recent Game-channel messages.
+- `POST /api/messages` — send Game-channel message.
+- `GET /api/social?kind=ooc` — General/OOC messages.
+- `POST /api/social/ooc` — send General/OOC message.
+- `POST /api/social/settings` — explicit player settings save.
+- `POST /api/gm/audio` — GM audio upload/play/stop.
+
+### Session start/end
+
+The web Start Session / End Session control is **not supposed to be a fake browser-only toggle**.
+
+The server changes the configured Discord Game channel permissions and publishes the session announcement. If Discord work fails, the browser should report the failure rather than pretending the session changed.
+
+The end-of-session review is optional; failure to post the review must not undo a successful channel lock/session close.
+
+---
+
+# 11. REAL-TIME MESSAGE SYSTEM
+
+The preferred path is:
+
+```text
+Discord / web message
+       ↓
+backend bridge
+       ↓
+SSE event
+       ↓
+connected browsers
+       ↓
+append recent message locally
+```
+
+SSE event types include the concepts of:
+
+- `world_state`
+- `game_message`
+- `general_message`
+- `social_update`
+- audio/state events
+
+Polling is a recovery fallback, not the preferred constant full-refresh mechanism.
+
+### Current performance problem
+
+The website's Discord message shower/reload feels laggy because too much historical material can be involved.
+
+Desired behavior:
+
+- Discord keeps the full history.
+- Website initially shows a sensible recent window.
+- Live messages arrive through SSE.
+- Old history is loaded only when explicitly needed.
+- Do not repeatedly re-download ancient Discord history just because the UI refreshed.
+- Do not feed ancient message archives into every AI request.
+
+---
+
+# 12. CAMPAIGN STATE / DATABASE
+
+`campaign_data/campaign.db` is the persistent campaign store. `core/campaign_store.py` handles initialization/storage/backups.
+
+`web_world_state.json` stores web/game state such as:
+
+- campaign identity,
+- world threat/danger,
+- region danger,
+- session state,
+- chapter/session history,
+- events,
+- lore connections,
+- emergency state,
+- OOC/DM/group information,
+- player settings,
+- GM messages/notifications,
+- companions,
+- audio assets/active audio,
+- main OST selection,
+- ability catalog,
+- character journals/inbox,
+- economy state,
+- advanced atmosphere/timeline/persona/POV/storybook state.
+
+The web server uses a world-state lock and atomic temporary-file replacement when saving the JSON state.
+
+Do not casually edit live SQLite/JSON campaign data from source-code changes. Treat campaign data as runtime state.
+
+---
+
+# 13. CAMPAIGN MEMORY / LORE SYSTEM
+
+There are two different meanings of “memory” in this project:
+
+### Runtime campaign memory
+
+`features/memory.py` and `features/server_lore.py` archive Discord/campaign information so the bot can retrieve it later.
+
+It can contain:
+
+- raw Discord messages,
+- lore facts,
+- sessions,
+- structured entities/profiles,
+- relationships,
+- priority sources,
+- suggestions,
+- DM/archive information.
+
+Server lore continuously archives new messages and can perform a background historical backfill after startup.
+
+### Project Brain
+
+`PLAN.md` is **not** campaign memory. It is the developer/AI knowledge layer describing the software, rules, architecture, navigation, and work plan.
+
+Do not feed the entire runtime memory archive to an AI merely because it exists.
+
+---
+
+# 14. AI SYSTEM
+
+The project supports multiple AI providers/models through `features/ai_providers.py`, with configuration in `config.py`.
+
+Configured provider families include examples such as:
+
+- Gemini
+- Groq
+- Cerebras
+- Mistral
+- SambaNova
+- OpenRouter
+- GitHub Models
+- NVIDIA
+- Hugging Face
+- Chutes
+- Pollinations
+- LLM7
+- local Ollama
+
+`AI_PROVIDER=auto` allows provider selection/fallback behavior.
+
+The administrator AI channel is separate from normal campaign/player use.
+
+### AI responsibilities
+
+The AI can assist with:
+
+- campaign lore
+- continuity
+- summaries
+- NPCs
+- characters
+- factions
+- locations
+- items
+- mysteries
+- dialogue
+- encounters
+- worldbuilding
+- GM preparation
+- bot/technical questions
+- optional music mood analysis
+
+### AI canon rules
+
+- Clear GM canon is authoritative.
+- A later clear GM correction supersedes an older incorrect answer.
+- Do not turn inference into canon.
+- Do not invent unknown lore, acronyms, abilities, relationships, or motivations.
+- Player corrections may provide evidence but do not override established GM canon.
+- GM jokes/tests/questions/speculation are not automatically canon.
+- GM-only hidden information must never leak to players.
+- Structured profiles are preferred over generic raw-message matches for entity questions.
+- Session-specific questions must use the correct session record.
+- A Discord player and an in-world character are different identities.
+- Dead characters remain dead; replacements are new character instances with their own history.
+
+### Known lore corrections
 
 - Aro is a word meaning Energy, not an acronym.
 - Mother Prana is the original source of Aro.
-- Yellow stones do not simply boost Aro; they modify the user's Aro to reflect the user's personality.
-- For Vespa/Mevrick: Mevrick believes Vespa is a separate being and believes fragments keep Vespa away, but that belief is a coping lie; Mevrick is Vespa. Do not confuse Mevrick's belief with the underlying truth.
+- Yellow stones modify the user's Aro to reflect personality; they are not simply generic Aro boosters.
+- Mevrick/Vespa: Mevrick believes Vespa is separate and believes fragments keep Vespa away, but that belief is a coping lie; Mevrick is Vespa.
 
-## 7. Campaign memory vs project Brain
+---
 
-The runtime Discord/campaign memory system is **not** the project's AI/developer Brain.
+# 15. AI CONTEXT / TOKEN BUDGET
 
-Runtime campaign memory exists to archive and retrieve Discord/campaign information. It can store raw messages, lore facts, sessions, structured entities, relationships, priority sources, and related campaign state.
+The project should minimize unnecessary model context and cost.
 
-The project Brain exists to tell an AI/developer **how the software works, what matters, what is currently broken, and how changes should be made**.
+The correct context priority is:
 
-Keep these concepts separate.
+```text
+1. Current user request
+2. Current game/session state when relevant
+3. Relevant structured profile/lore
+4. Small recent conversation window
+5. Additional supporting evidence only if needed
+```
 
-Historical Discord backfill intentionally loads accessible campaign text channels and queues material for later classification. Do not mistake that runtime archive behavior for a requirement to feed all historical messages into every AI request.
+Do not send entire archives by default.
 
-## 8. Current AI context/token strategy
+The project already has bounded queues/context in several places. Preserve those safeguards while improving them.
 
-The goal is to minimize unnecessary model context and cost without destroying useful continuity.
+A future/ongoing context-budget system should be able to limit:
 
-Existing code already uses bounded context in several places, including bounded AI queues and limited recent conversation/lore context. Preserve those safeguards.
+- recent messages,
+- lore facts,
+- characters/records per section,
+- maximum characters/tokens per section,
+- maximum total AI context,
+- provider/model-specific budgets.
 
-When improving this area, prefer a centralized context-budget approach:
+The important goal is **relevance-first truncation**, not simply cutting the newest/oldest text blindly.
 
-1. Current user request.
-2. Current game/session state when relevant.
-3. Directly relevant structured profile/lore.
-4. Small recent conversation window when relevant.
-5. Only then additional supporting evidence.
+---
 
-Do not send entire archives by default. Old messages should be retrieved only when the question actually requires them.
+# 16. MUSIC / AUDIO SYSTEM
 
-A future/ongoing improvement can expose explicit limits for:
+The bundled server music library is organized into mood/category groups, including:
 
-- maximum recent messages,
-- maximum lore facts,
-- maximum characters/tokens per context section,
-- maximum total AI context budget,
-- optional model/provider-specific budgets.
+- `action`
+- `calm`
+- `dark`
+- `funny`
+- `main_ost`
+- `sad`
+- `scary`
 
-The budget should prioritize relevant/current/authoritative information instead of simply truncating everything equally.
+It lives under `campaign_data/web_audio/` and is indexed by the web backend.
 
-## 9. Current known bugs and requested work
+The web audio client supports cross-fading when the active soundtrack changes and has a per-device Music On/Off control.
 
-These are the user's active priorities and should remain visible until fixed and verified.
+### Intended music behavior
 
-### High priority
+- Main OST should randomly choose from the Main OST pool instead of repeatedly selecting the same track.
+- Main OST should begin on opening as intended by the current product direction, subject to browser autoplay/user-gesture restrictions.
+- AI music/mood detection must happen **only while a real Game session is active**.
+- AI music detection must not continuously react to ordinary General/OOC chat.
+- AI music classification must never block sending a message.
+- Player/NPC theme assignments are separate from the global Main OST.
+- Never silently replace the global Main OST with a character theme.
+- Missing/stale audio files must not remain as dead library records.
 
-- **Main OST selection:** randomly select a Main OST from the `main_ost` pool instead of repeatedly playing the same track.
-- **Main OST startup:** start the Main OST on opening as intended by the current product direction.
-- **Music detection scope:** AI music detection must happen **only during active game sessions**.
-- **End Session:** Start Session works, but ending a session currently does not work correctly from the user's perspective. Fix the complete Discord-backed end flow.
-- **Sidebar categories:** category collapse/expand stopped working after the sidebar-hider update. Restore it without breaking the sidebar hider.
-- **Discord message shower performance:** the website's Discord message display/reload feels laggy. Stop repeatedly loading very old Discord messages into the web UI. Discord should retain full history, while the website should prefer a recent window plus live events and load older history only when needed.
-- **Game menu Settings:** the game menu GUI does not currently show/provide Settings correctly. Make Settings reachable.
-- **Player Settings:** expand player configuration and allow players to change the newly introduced UI colors. Preserve explicit Save behavior.
-- **Danger meter:** improve the red danger treatment so it is visually clear while retaining the existing smooth full-UI danger effect and player-facing privacy rule.
+---
 
-### Performance direction for Discord messages
+# 17. DANGER / WORLD ATMOSPHERE
 
-Live server events should be the primary game-message update path. Polling is only a slow recovery fallback. Show an optimistic pending message while Discord webhook delivery finishes.
+Danger is regional/location-specific. The GM can set a region's 0–100 danger level and a GM description.
 
-The web client should not repeatedly reload a huge historical Discord transcript. Keep recent context on the website and use targeted history retrieval for older messages.
+The player sees the visual danger effect but not the numeric percentage/explanation.
 
-### UI quality direction
+The UI uses smooth full-interface danger transitions, including a red danger overlay/tint and enhanced borders/shadows as danger rises.
 
-The current UI is considered very good overall. Fix the listed bugs/features without unnecessary redesign.
+Current requested improvement: the high/red danger state does not read strongly enough. Improve it without destroying the existing smooth dark-fantasy UI.
 
-## 10. Game modules / roadmap
+---
 
-Planned focused game modules include:
+# 18. PLAYER SETTINGS
 
-- Character.
-- Inventory.
-- World/codex.
-- General chat.
-- GM controls.
+Player settings are saved explicitly through the web settings endpoint.
 
-Each module should be added only after its live action and error feedback are defined.
+Existing settings include behavior such as:
 
-## 11. Required verification
+- accent/color preferences,
+- reduced animations,
+- portrait visibility,
+- timestamps,
+- message density/compactness,
+- other client presentation preferences.
+
+Current requested improvement:
+
+- expose the newly introduced UI colors to players,
+- expand useful player configuration,
+- keep explicit Save behavior,
+- do not silently save every temporary control change.
+
+---
+
+# 19. UI DESIGN CONTRACT
+
+The current UI direction is considered very good. **Do not redesign it unnecessarily.**
+
+The visual identity is a dark-fantasy/game interface with dark panels, muted gray UI, red danger/accent treatment, atmospheric backgrounds, and smooth world-state transitions.
+
+Preserve:
+
+- game-first hierarchy,
+- readable chat,
+- responsive layout,
+- GM/player separation,
+- dark-fantasy presentation,
+- live session indicator,
+- sidebar navigation,
+- audio controls,
+- player settings behavior.
+
+Chat supports lightweight RPG formatting:
+
+- `**word**` → bold.
+- `*word*` → italic when the marker directly touches a letter.
+- spaced markers such as `* word *` stay plain text.
+- escape message text before adding formatting tags.
+
+---
+
+# 20. CURRENT BUGS / ACTIVE PLAN
+
+These are the user's active priorities and stay here until fixed and verified.
+
+### 1. Main OST
+
+Randomly select a Main OST track from the `main_ost` library instead of repeatedly using the same track. Main OST should start when opening as intended.
+
+### 2. Music detection scope
+
+AI music detection must happen **ONLY during live Game sessions**.
+
+### 3. End Session
+
+Start Session works. End Session currently does not work correctly from the user's perspective. Fix the full Discord-backed end flow.
+
+### 4. Sidebar category collapsing
+
+Category/channel collapse stopped working after the sidebar-hider update. Restore category collapse/expand without breaking the sidebar hider.
+
+### 5. Discord message shower performance
+
+The website should not repeatedly reload very old Discord messages. Keep Discord history intact but make the website recent-first + live-event-driven, with targeted old-history loading only when needed.
+
+### 6. Game menu Settings
+
+The game menu GUI does not currently expose Settings correctly. Make Settings reachable from the intended game menu/navigation flow.
+
+### 7. Player Settings
+
+Add meaningful configuration for the newer UI colors and other useful player presentation settings while preserving explicit Save behavior.
+
+### 8. Danger meter
+
+Make the high/red danger state visually stronger and clearer while keeping the existing smooth full-UI danger effect and player privacy behavior.
+
+---
+
+# 21. REGRESSION RULES
+
+These are mandatory unless the user explicitly requests a behavior change.
+
+- Game-page GM quick-control panel remains on Game.
+- GM Chat remains GM-only and on GM Chat.
+- General uses the configured General Discord channel.
+- Game uses the configured Game Discord channel.
+- Character remains the Character navigation item and has no Age field.
+- Players cannot see GM controls or GM-only data.
+- Players see the danger visual effect but not its percentage/explanation.
+- Discord OAuth/session authorization remains intact.
+- Tester-GM authorization remains intact.
+- Start/end session remains Discord-backed.
+- The website must not pretend a Discord action succeeded when it did not.
+- Live server events should be preferred over repeated full polling reloads.
+- Current UI direction should not be unnecessarily redesigned.
+- New buttons must have real actions, a clear disabled state, or an explicit unavailable label.
+- Do not silently save player settings that are supposed to require Save.
+- Do not introduce unrelated refactors while fixing a targeted bug.
+- Never put secrets in source/docs/hand-offs.
+
+---
+
+# 22. TESTING / VERIFICATION
 
 Before considering a web/UI change complete, run:
 
@@ -261,45 +878,145 @@ python tests/ui_integrity_check.py
 python tests/web_regression_check.py
 ```
 
-When the server changes, also run:
+When the web server changes:
 
 ```text
 python -m py_compile anonymous_bot/web_app.py
 ```
 
-Manually verify each new/changed button while signed in with the appropriate role.
+When bot modules change, verify the bot starts and Discord command sync completes.
 
-Regression behavior that must remain protected:
+Manually test every changed button/action under the correct player or GM role.
 
-- Game-page GM quick-control panel remains on Game.
-- GM Chat remains GM-only and on GM Chat.
-- General/Game Discord channel assignments remain correct.
-- Character remains the Character navigation item with no Age field.
-- Players cannot see GM controls or GM-only data.
-- Players see the danger effect but not its percentage/explanation.
-- Discord OAuth/session and tester-GM authorization remain intact.
-- Existing working layout/behavior remains unless explicitly replaced.
+For session changes, verify both browser state and actual Discord Game-channel permissions.
 
-## 12. Setup / handoff
+For message-performance changes, verify that:
 
-To run the project, double-click `START_EVERYTHING.bat`. It installs missing Python packages, starts Ollama when available, starts the Discord bot, waits for the local website, and opens it.
+- recent messages appear,
+- new messages arrive live,
+- old history remains available through Discord,
+- the browser does not repeatedly reload huge history.
 
-For a new installation:
+---
 
-- Supply the code and `.env.example`.
-- The recipient supplies their own Discord credentials/configuration.
-- Never share `anonymous_bot/.env`.
-- Do not package or hand off private campaign data or uploaded music unless explicitly intended and secured.
-- Python 3.11+ is required unless the project `.venv` is already prepared.
+# 23. CONFIGURATION / CREDENTIALS
 
-## 13. Completed / history
+Configuration is loaded by `anonymous_bot/config.py` from environment variables / `.env` locations.
 
-- Project Brain created and made the intended single AI/developer context file.
-- README, AI README, and regression-policy information have now been consolidated here.
-- Current user-reported feature/bug backlog has been recorded here for continuity.
+Examples of configuration include:
 
-## 14. Rule for future updates
+- Discord bot token
+- Discord OAuth client ID/secret
+- redirect URL
+- web session secret
+- web host/port
+- campaign name
+- game/general channel IDs
+- GM/tester IDs
+- AI provider/model settings
+- Ollama URL/model
+- campaign data directory
+- server-lore collection options
 
-Whenever a significant feature, bug fix, architecture change, regression rule, AI behavior rule, or project-direction decision is made, update this file in the same change.
+`anonymous_bot/.env.example` is safe to use as a template.
 
-**PLAN.md is the source of truth.** Other documentation should not become competing sources of truth.
+**Never commit the real `.env` or expose credentials in PLAN.md.**
+
+---
+
+# 24. WINDOWS / LOCAL DEVELOPMENT
+
+The user's local repository path is currently:
+
+```text
+C:\Users\maksi\Desktop\anonymous bot\BOT
+```
+
+GitHub Desktop is connected to this repository.
+
+The user's separate local `auto-sync.ps1` setup is intended to pull GitHub changes into this exact repository every 30 seconds:
+
+```powershell
+while ($true) {
+    Set-Location "C:\Users\maksi\Desktop\anonymous bot\BOT"
+    git pull origin main
+    Start-Sleep -Seconds 30
+}
+```
+
+This is a local convenience and is **not part of the bot application**. Do not confuse it with project runtime behavior.
+
+GitHub → PC can be automated with that pull loop. PC → GitHub still requires a commit/push through Git/GitHub Desktop.
+
+---
+
+# 25. DEVELOPMENT WORKFLOW
+
+Preferred workflow:
+
+```text
+User request
+    ↓
+PLAN.md first
+    ↓
+identify relevant subsystem
+    ↓
+inspect only relevant source/tests
+    ↓
+make smallest safe change
+    ↓
+run appropriate regression checks
+    ↓
+update PLAN.md if architecture/behavior/backlog changed
+    ↓
+commit/push to GitHub
+```
+
+For AI tools:
+
+> **PLAN.md is the first and primary context. Do not read the whole repository unless the task genuinely requires it.**
+
+If a task concerns a specific feature, open its source file(s) rather than loading unrelated campaign data or historical Discord archives.
+
+---
+
+# 26. FUTURE / ROADMAP AREAS
+
+Focused game modules include:
+
+- Character
+- Inventory
+- World/Codex
+- General chat
+- GM controls
+
+Other continuing systems include:
+
+- world/lore management,
+- map and scene presentation,
+- regional atmosphere,
+- economy and currencies,
+- companion gameplay,
+- dungeon gameplay,
+- faction/reputation,
+- bounties,
+- secret story objectives,
+- campaign notifications,
+- timelines/personas/POV/storybooks,
+- AI-assisted campaign management.
+
+Only add or expose functionality when the underlying action actually works.
+
+---
+
+# 27. SOURCE-OF-TRUTH RULE
+
+`PLAN.md` is now the **one real project Brain**.
+
+The former standalone documentation concepts from `README.md`, `AI_README.md`, and `REGRESSION_POLICY.md` have been consolidated into this file.
+
+Do not recreate competing documentation unless there is a strong technical reason.
+
+When a significant feature, bug fix, architecture change, regression rule, AI behavior rule, navigation change, or project-direction decision is made, update this file so the next AI/developer can understand the project without rereading the entire repository.
+
+**Keep this file accurate. Keep it useful. Keep it focused on the actual bot/system.**
