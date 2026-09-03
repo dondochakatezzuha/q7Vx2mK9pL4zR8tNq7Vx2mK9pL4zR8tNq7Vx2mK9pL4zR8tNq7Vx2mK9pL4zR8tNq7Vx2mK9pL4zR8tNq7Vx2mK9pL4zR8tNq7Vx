@@ -22,10 +22,10 @@ jobs:
 
       - name: Clone public audio repository
         env:
-          AUDIO_REPO_TOKEN: ${{ secrets.AUDIO_REPO_TOKEN }}
+          AUDIO_REPO_TOKEN: ${{ secrets.PUBLIC_AUDIO_REPO_TOKEN }}
         run: |
           if [ -z "$AUDIO_REPO_TOKEN" ]; then
-            echo "AUDIO_REPO_TOKEN is not configured."
+            echo "PUBLIC_AUDIO_REPO_TOKEN is not configured."
             exit 1
           fi
           git clone "https://x-access-token:${AUDIO_REPO_TOKEN}@github.com/dondochakatezzuha/x7Qm2L9vK4x7Qm2L9vK4.git" public-audio
