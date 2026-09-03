@@ -1,0 +1,62 @@
+name: Sync Public Audio Library
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'campaign_data/web_audio/**'
+      - 'campaign_data/web_sfx/**'
+      - '.github/workflows/sync-public-audio.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  sync-audio:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout private BOT repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Clone public audio repository
+        env:
+          AUDIO_REPO_TOKEN: ${{ secrets.AUDIO_REPO_TOKEN }}
+        run: |
+          if [ -z "$AUDIO_REPO_TOKEN" ]; then
+            echo "AUDIO_REPO_TOKEN is not configured."
+            exit 1
+          fi
+          git clone "https://x-access-token:${AUDIO_REPO_TOKEN}@github.com/dondochakatezzuha/x7Qm2L9vK4x7Qm2L9vK4.git" public-audio
+
+      - name: Sync music and SFX
+        run: |
+          set -e
+          rm -rf public-audio/music public-audio/sfx
+          mkdir -p public-audio/music public-audio/sfx
+
+          if [ -d campaign_data/web_audio ]; then
+            cp -a campaign_data/web_audio/. public-audio/music/
+          fi
+
+          if [ -d campaign_data/web_sfx ]; then
+            cp -a campaign_data/web_sfx/. public-audio/sfx/
+          fi
+
+          find public-audio/music public-audio/sfx -name '.gitkeep' -delete || true
+
+      - name: Commit and push changes
+        working-directory: public-audio
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A music sfx
+
+          if git diff --cached --quiet; then
+            echo "No audio changes to publish."
+            exit 0
+          fi
+
+          git commit -m "Sync audio library from BOT"
+          git push origin main
