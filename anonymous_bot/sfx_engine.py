@@ -3,17 +3,30 @@ from __future__ import annotations
 
 import hashlib
 import math
+import os
 import random
 import re
 import struct
 import wave
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote, urljoin
 
 from .config import DATA_DIR
 
 SFX_LIBRARY_DIR = Path(DATA_DIR) / "web_sfx"
 SFX_SAMPLE_RATE = 44100
+DEFAULT_PUBLIC_BASE_URL = "https://raw.githubusercontent.com/dondochakatezzuha/x7Qm2L9vK4x7Qm2L9vK4/main/sfx"
+
+
+def sfx_public_base_url() -> str:
+    return (os.getenv("SFX_PUBLIC_BASE_URL") or DEFAULT_PUBLIC_BASE_URL).strip().rstrip("/")
+
+
+def sfx_stream_url(filename: str) -> str:
+    parts = [part for part in Path(str(filename)).as_posix().split("/") if part not in {"", ".", ".."}]
+    key = "/".join(parts)
+    return urljoin(sfx_public_base_url() + "/", quote(key, safe="/"))
 
 _FAMILIES: dict[str, tuple[str, ...]] = {
     "explosion": ("explosion", "explode", "explodes", "detonation", "blast", "erupts", "detonates", "bomb", "bombardment", "burst"),
@@ -122,7 +135,7 @@ def choose_sfx(event: dict[str, Any]) -> dict[str, Any] | None:
         ranked.append((score, name, item))
     if not ranked: return None
     ranked.sort(reverse=True, key=lambda row: row[0]); _, name, item = ranked[0]
-    return {"id": name, **item, "url": f"/media/sfx/{name}.wav"}
+    return {"id": name, **item, "url": sfx_stream_url(f"{name}.wav")}
 
 def _write_wav(path: Path, samples: list[float]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -179,7 +192,7 @@ def ensure_starter_library() -> list[dict[str, Any]]:
         if not path.exists():
             seed = int(hashlib.sha256(name.encode()).hexdigest()[:8], 16)
             _write_wav(path, _synth(item["kind"], float(item["duration"]), seed))
-    return [{"id": name, "name": name.replace("_", " ").title(), "filename": f"{name}.wav", "url": f"/media/sfx/{name}.wav", "tags": item["tags"], "source": "generated-starter"} for name, item in _STARTER.items()]
+    return [{"id": name, "name": name.replace("_", " ").title(), "filename": f"{name}.wav", "url": sfx_stream_url(f"{name}.wav"), "tags": item["tags"], "source": "generated-starter"} for name, item in _STARTER.items()]
 
 def build_sfx_event(text: str, *, structured: dict[str, Any] | None = None) -> dict[str, Any] | None:
     event = detect_event(text, structured=structured)
