@@ -1,27 +1,25 @@
 """Dynamic layered SFX orchestration.
 
-Iconic recipes are original, anime-inspired sound identities rather than
-copies of copyrighted show recordings.
+Recipes use original/generated sound identities and are designed to stack into
+cinematic scenes instead of playing one flat sound per event.
 """
 from __future__ import annotations
 import random
 from typing import Any
+from .sfx_expansion import ensure_expanded_library
 
 ACTION_RECIPES: dict[str, list[dict[str, Any]]] = {
     "explosion": [{"id":"explosion_large","offset":0.00,"volume":1.00},{"id":"heavy_impact","offset":0.02,"volume":0.75},{"id":"shockwave","offset":0.20,"volume":0.70},{"id":"rubble_fall","offset":0.45,"volume":0.55}],
     "catastrophic_explosion": [{"id":"explosion_catastrophic","offset":0.00,"volume":1.00},{"id":"heavy_impact","offset":0.04,"volume":0.90},{"id":"shockwave","offset":0.18,"volume":0.90},{"id":"ground_crack","offset":0.30,"volume":0.75},{"id":"rubble_fall","offset":0.60,"volume":0.70}],
     "laser": [{"id":"laser_charge","offset":-0.65,"volume":0.65},{"id":"laser_fire","offset":0.00,"volume":0.95}],
     "laser_wall_break": [{"id":"laser_charge","offset":-0.65,"volume":0.65},{"id":"laser_heavy","offset":0.00,"volume":1.00},{"id":"wall_break","offset":0.12,"volume":0.85},{"id":"rubble_fall","offset":0.45,"volume":0.65}],
-
-    # Anime-style iconic moments: original identities, not ripped show audio.
     "cero": [{"id":"cero_charge","offset":-0.90,"volume":0.70},{"id":"cero_charge","offset":-0.35,"volume":0.82},{"id":"cero_blast","offset":0.00,"volume":1.00},{"id":"shockwave","offset":0.22,"volume":0.72}],
     "cero_impact": [{"id":"cero_blast","offset":0.00,"volume":1.00},{"id":"explosion_large","offset":0.10,"volume":0.75},{"id":"wall_break","offset":0.18,"volume":0.70},{"id":"rubble_fall","offset":0.48,"volume":0.55}],
-    "energy_sword_wave": [{"id":"energy_charge","offset":-0.70,"volume":0.62},{"id":"sword_energy_release","offset":0.00,"volume":1.00},{"id":"sword_slash","offset":0.04,"volume":0.72},{"id":"shockwave","offset":0.16,"volume":0.60}],
-    "spiritual_pressure": [{"id":"reiatsu_rumble","offset":0.00,"volume":0.85},{"id":"energy_burst","offset":0.35,"volume":0.58}],
+    "energy_sword_wave": [{"id":"energy_charge_deep","offset":-0.70,"volume":0.62},{"id":"energy_release_massive","offset":0.00,"volume":1.00},{"id":"sword_slash","offset":0.04,"volume":0.72},{"id":"shockwave_heavy","offset":0.16,"volume":0.60}],
+    "spiritual_pressure": [{"id":"low_frequency_rumble","offset":0.00,"volume":0.85},{"id":"energy_release_massive","offset":0.35,"volume":0.45}],
     "berserker_roar": [{"id":"vocal_berserker_roar","offset":0.00,"volume":1.00},{"id":"heavy_impact","offset":0.02,"volume":0.35},{"id":"shockwave","offset":0.10,"volume":0.42}],
     "monster_roar": [{"id":"vocal_monster_roar","offset":0.00,"volume":1.00},{"id":"rubble_fall","offset":0.08,"volume":0.30}],
     "transformation_roar": [{"id":"charge_up","offset":-1.00,"volume":0.65},{"id":"vocal_berserker_roar","offset":-0.05,"volume":0.90},{"id":"energy_burst","offset":0.00,"volume":1.00},{"id":"shockwave","offset":0.13,"volume":0.72}],
-
     "time_stop": [{"id":"time_stop","offset":0.00,"volume":1.00}],
     "time_reverse": [{"id":"time_reverse","offset":0.00,"volume":1.00}],
     "time_stop_release": [{"id":"time_stop_release","offset":0.00,"volume":0.90},{"id":"shockwave","offset":0.10,"volume":0.70}],
@@ -36,6 +34,15 @@ ACTION_RECIPES: dict[str, list[dict[str, Any]]] = {
     "parry": [{"id":"parry","offset":0.00,"volume":0.95}],
     "heal": [{"id":"heal","offset":0.00,"volume":0.80}],
     "transformation": [{"id":"charge_up","offset":-0.90,"volume":0.70},{"id":"energy_burst","offset":0.00,"volume":0.95},{"id":"shockwave","offset":0.12,"volume":0.65}],
+    "helicopter_takeoff": [{"id":"helicopter_takeoff","offset":0.00,"volume":0.90},{"id":"helicopter_idle","offset":0.25,"volume":0.75}],
+    "helicopter_pass": [{"id":"helicopter_pass","offset":0.00,"volume":0.90}],
+    "helicopter_attack": [{"id":"helicopter_attack","offset":0.00,"volume":0.90},{"id":"energy_beam_heavy","offset":0.18,"volume":0.35}],
+    "helicopter_crash": [{"id":"helicopter_crash","offset":0.00,"volume":1.00},{"id":"debris_burst","offset":0.20,"volume":0.75},{"id":"fire_crackle","offset":0.55,"volume":0.40}],
+    "car_crash": [{"id":"car_crash","offset":0.00,"volume":1.00},{"id":"metal_break","offset":0.08,"volume":0.75},{"id":"glass_break","offset":0.12,"volume":0.70}],
+    "vehicle_pass": [{"id":"car_pass","offset":0.00,"volume":0.80}],
+    "wall_break": [{"id":"wall_break","offset":0.00,"volume":0.90},{"id":"debris_burst","offset":0.12,"volume":0.75},{"id":"dust_burst","offset":0.28,"volume":0.50}],
+    "weapon_swing": [{"id":"sword_slash","offset":0.00,"volume":0.80}],
+    "weapon_impact": [{"id":"heavy_impact","offset":0.00,"volume":0.90},{"id":"body_hit","offset":0.03,"volume":0.55}],
 }
 
 VOCAL_SFX: dict[str, dict[str, str]] = {
@@ -50,7 +57,6 @@ VOCAL_SFX: dict[str, dict[str, str]] = {
 }
 
 def resolve_gender(actor: dict[str, Any] | None = None, *, rng: random.Random | None = None) -> str:
-    """Return explicit player gender; anonymous NPCs are randomized."""
     actor = actor or {}
     gender = str(actor.get("gender") or actor.get("voice_gender") or "").strip().casefold()
     if gender in {"male","m","man"}: return "male"
@@ -59,6 +65,7 @@ def resolve_gender(actor: dict[str, Any] | None = None, *, rng: random.Random | 
     return (rng or random).choice(("male","female"))
 
 def build_soundscape(action: str, *, actor: dict[str, Any] | None = None, vocal: str | None = None, rng: random.Random | None = None) -> list[dict[str, Any]]:
+    ensure_expanded_library()
     layers = [dict(layer) for layer in ACTION_RECIPES.get(action, [])]
     if vocal:
         gender = resolve_gender(actor, rng=rng)
