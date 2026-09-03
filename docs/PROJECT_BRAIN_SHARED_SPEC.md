@@ -214,7 +214,48 @@ Authorized collaborators should be able to add a track, edit its tags/metadata, 
 
 Only audio that the collaborators are authorized to host/use should be placed in shared storage.
 
-## 13. Security boundary
+## 13. GM narration drives audio
+
+The **GM's story/narration text is the authoritative input for automatic audio detection**.
+
+Player messages are not audio triggers. The audio analyzer should not inspect a player's attempted action and start combat/music/SFX from it. The GM writes the actual story outcome, and that narration is what the audio system interprets.
+
+```text
+GM narration
+    ↓
+context/event + mood detection
+    ↓
+music selection + SFX selection
+    ↓
+playback
+```
+
+Examples:
+
+- `"Zero shot out missiles out his staff, exploding the terra beneath him"` → missile/projectile + explosion + impact/ground destruction SFX.
+- `"He slams his fist into the ground, sending a massive shockwave through the battlefield"` → ground slam + impact + shockwave + rubble/destruction SFX.
+- `"The sky darkens as black clouds gather around the battlefield"` → dark/scary/tension music context.
+- `"He quietly walks through the abandoned hospital"` → scary/ambient context + footsteps.
+
+Detection should be semantic/contextual rather than a single exact-keyword lookup. Multiple detected concepts may produce a layered SFX sequence and/or a music mood transition.
+
+This rule does **not** mean players are requesting permission to trigger audio. It means the GM is the narrator/source text for the automatic audio engine.
+
+## 14. Local audio library
+
+Local development has a dedicated unified registry at `anonymous_bot/local_audio_library.py`.
+
+It treats:
+
+- `campaign_data/web_audio/` as the complete local music library;
+- `campaign_data/web_sfx/` as the complete local SFX library;
+- the procedural starter SFX definitions as discoverable even before their WAV files are generated.
+
+`build_local_library()` returns both libraries and their counts for local web/API integration. The registry scans the machine at runtime, so the local library can contain the user's full music collection without putting those binary files into GitHub source.
+
+The local mode is deliberately separate from shared cloud hosting: local development can use every locally available track/SFX, while the eventual public/shared deployment references remote object storage instead of downloading the full collection.
+
+## 15. Security boundary
 
 Brain must never contain:
 
@@ -227,13 +268,13 @@ Brain must never contain:
 
 It may describe which environment variables exist and what they are used for, but values remain local secrets.
 
-## 14. Verification rule
+## 16. Verification rule
 
 A Brain entry claiming a feature is implemented should be backed by the source code and appropriate tests/manual verification.
 
 For web changes, use the project's UI/web regression checks. For Python changes, use the relevant compile/startup checks. For Discord-backed behavior, verify actual Discord behavior rather than browser-only state.
 
-## 15. Completeness checklist
+## 17. Completeness checklist
 
 Before calling Project Brain complete, confirm it has coverage for:
 
@@ -261,7 +302,10 @@ Before calling Project Brain complete, confirm it has coverage for:
 - [x] IDEAS approval workflow;
 - [x] Update Log/versioning;
 - [x] shared cloud music library;
+- [x] GM-narration-driven audio detection;
+- [x] local unified audio library;
 - [x] collaborator merge/handoff rules;
 - [x] current-vs-planned state distinction;
 - [x] AI context/token-saving behavior;
-- [x] maintenance/synchronization rules.
+- [x] maintenance/synchronization rules;
+]
