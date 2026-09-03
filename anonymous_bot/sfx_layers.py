@@ -7,6 +7,7 @@ from __future__ import annotations
 import random
 from typing import Any
 from .sfx_expansion import ensure_expanded_library
+from .sfx_specials import ensure_special_library
 
 ACTION_RECIPES: dict[str, list[dict[str, Any]]] = {
     "explosion": [{"id":"explosion_large","offset":0.00,"volume":1.00},{"id":"heavy_impact","offset":0.02,"volume":0.75},{"id":"shockwave","offset":0.20,"volume":0.70},{"id":"rubble_fall","offset":0.45,"volume":0.55}],
@@ -61,11 +62,11 @@ def resolve_gender(actor: dict[str, Any] | None = None, *, rng: random.Random | 
     gender = str(actor.get("gender") or actor.get("voice_gender") or "").strip().casefold()
     if gender in {"male","m","man"}: return "male"
     if gender in {"female","f","woman"}: return "female"
-    if actor.get("is_player") or actor.get("player_id") or actor.get("user_id"): return "male"
     return (rng or random).choice(("male","female"))
 
 def build_soundscape(action: str, *, actor: dict[str, Any] | None = None, vocal: str | None = None, rng: random.Random | None = None) -> list[dict[str, Any]]:
     ensure_expanded_library()
+    ensure_special_library()
     layers = [dict(layer) for layer in ACTION_RECIPES.get(action, [])]
     if vocal:
         gender = resolve_gender(actor, rng=rng)
