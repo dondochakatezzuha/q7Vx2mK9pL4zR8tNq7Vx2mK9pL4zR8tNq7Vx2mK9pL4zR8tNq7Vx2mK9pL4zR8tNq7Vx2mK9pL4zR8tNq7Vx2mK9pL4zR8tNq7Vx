@@ -1,14 +1,10 @@
-"""Shared Project Brain music library abstraction.
+"""Shared music library URL abstraction.
 
-The application code stays in GitHub, while actual audio can live in an
-S3-compatible object store (Cloudflare R2, S3, Backblaze B2, etc.).
+The application code stays private in BOT. Shared music is hosted separately
+in the public audio repository so browsers can stream individual tracks
+without receiving the private BOT repository or downloading the whole library.
 
-The service deliberately supports two modes:
-  * cloud: MUSIC_PUBLIC_BASE_URL points at the object/CDN URL;
-  * local: falls back to the existing campaign_data/web_audio library.
-
-Cloud mode does not download the library to the client machine. The browser
-receives a URL for the requested track and streams it directly from storage.
+Set MUSIC_PUBLIC_BASE_URL to override the default public repository root.
 """
 from __future__ import annotations
 
@@ -21,24 +17,25 @@ from urllib.parse import quote, urljoin
 
 
 AUDIO_EXTENSIONS = {".mp3", ".ogg", ".wav", ".m4a", ".aac", ".flac"}
+DEFAULT_PUBLIC_BASE_URL = "https://raw.githubusercontent.com/dondochakatezzuha/x7Qm2L9vK4x7Qm2L9vK4/main/music"
 
 
 def cloud_enabled() -> bool:
-    return bool((os.getenv("MUSIC_PUBLIC_BASE_URL") or "").strip())
+    return True
 
 
 def public_base_url() -> str:
-    return (os.getenv("MUSIC_PUBLIC_BASE_URL") or "").strip().rstrip("/")
+    return (os.getenv("MUSIC_PUBLIC_BASE_URL") or DEFAULT_PUBLIC_BASE_URL).strip().rstrip("/")
 
 
 def object_key(filename: str) -> str:
-    """Normalize a track path into a safe object key."""
+    """Normalize a track path into a safe public-repository key."""
     parts = [part for part in Path(str(filename)).as_posix().split("/") if part not in {"", ".", ".."}]
     return "/".join(parts)
 
 
 def stream_url(filename: str, local_base: str = "/media/audio/") -> str:
-    """Return a remote stream URL when cloud hosting is configured."""
+    """Return the public shared stream URL for one requested track."""
     key = object_key(filename)
     if cloud_enabled():
         return urljoin(public_base_url() + "/", quote(key, safe="/"))
@@ -49,7 +46,7 @@ def track_id(filename: str) -> str:
     return "library-" + hashlib.sha256(object_key(filename).encode("utf-8")).hexdigest()[:16]
 
 
-def make_track(filename: str, name: str | None = None, tags: list[str] | None = None, source: str = "cloud-library") -> dict[str, Any]:
+def make_track(filename: str, name: str | None = None, tags: list[str] | None = None, source: str = "public-audio-repo") -> dict[str, Any]:
     key = object_key(filename)
     return {
         "id": track_id(key),
@@ -62,22 +59,23 @@ def make_track(filename: str, name: str | None = None, tags: list[str] | None = 
 
 
 def build_manifest(tracks: list[dict[str, Any]]) -> dict[str, Any]:
-    """Build a small manifest safe to commit to GitHub (no audio bytes)."""
+    """Build a small manifest; audio bytes remain outside the private repo."""
     clean = []
     for track in tracks:
         if not isinstance(track, dict):
             continue
+        filename = object_key(str(track.get("filename") or ""))
         clean.append({
-            "id": str(track.get("id") or track_id(str(track.get("filename") or ""))),
+            "id": str(track.get("id") or track_id(filename)),
             "name": str(track.get("name") or "Untitled"),
-            "filename": object_key(str(track.get("filename") or "")),
-            "url": str(track.get("url") or stream_url(str(track.get("filename") or ""))),
+            "filename": filename,
+            "url": str(track.get("url") or stream_url(filename)),
             "tags": [str(x) for x in (track.get("tags") or []) if str(x).strip()],
             "character": track.get("character"),
             "npc": track.get("npc"),
-            "source": str(track.get("source") or "cloud-library"),
+            "source": str(track.get("source") or "public-audio-repo"),
         })
-    return {"version": 1, "storage": "cloud" if cloud_enabled() else "local", "tracks": clean}
+    return {"version": 1, "storage": "public-github-audio", "tracks": clean}
 
 
 def write_manifest(path: str | Path, tracks: list[dict[str, Any]]) -> Path:
