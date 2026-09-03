@@ -7,6 +7,8 @@ on:
       - 'campaign_data/web_audio/**'
       - 'campaign_data/web_sfx/**'
       - '.github/workflows/sync-public-audio.yml'
+      - 'anonymous_bot/sfx_engine.py'
+      - 'anonymous_bot/sfx_expansion.py'
 
 permissions:
   contents: read
@@ -19,6 +21,17 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+
+      - name: Generate SFX library
+        env:
+          DISCORD_TOKEN: workflow-placeholder
+        run: |
+          python - <<'PY'
+          from anonymous_bot.sfx_engine import ensure_starter_library
+          from anonymous_bot.sfx_expansion import ensure_expanded_library
+          ensure_starter_library()
+          ensure_expanded_library()
+          PY
 
       - name: Clone public audio repository
         env:
