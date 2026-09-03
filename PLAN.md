@@ -6,6 +6,56 @@
 
 ---
 
+# PROJECT BRAIN RULE: BRAIN → CODE
+
+`PLAN.md` is not merely documentation or a wishlist. It is the project's summarized understanding of what exists, what has been decided, and what work remains.
+
+The source code remains the final authority for what is actually implemented, but Brain entries describing required/approved project behavior are development requirements.
+
+When Brain says a system or behavior is required but the source code does not implement it yet, that is unfinished project work. The AI/developer should implement it when working through that subsystem instead of treating the Brain entry as permanently informational.
+
+A feature must never be marked **Implemented** until it is actually present and verified in source/tests.
+
+When a feature is implemented, synchronize Brain immediately so Brain and code agree.
+
+---
+
+# AUTOMATIC BRAIN UPDATE RULE
+
+Whenever the user or a collaborator proposes a project idea, architecture decision, behavior requirement, feature request, correction, or important project-direction change during development, the AI should automatically record the meaningful information in Project Brain.
+
+This does **not** mean every suggestion is automatically implemented.
+
+The lifecycle is:
+
+```text
+User / collaborator suggests idea or requirement
+                    ↓
+          Project Brain records it
+                    ↓
+      classify current status correctly
+       ┌────────────┴────────────┐
+       │                         │
+  Requirement / Decision      Idea / Suggestion
+       │                         │
+       ↓                         ↓
+    implement              keep as approved/planned
+       │                    until explicitly approved
+       └────────────┬────────────┘
+                    ↓
+             verify in code
+                    ↓
+          synchronize Brain again
+```
+
+The AI must not silently turn an optional idea into implemented behavior. However, it must not lose meaningful suggestions simply because they were not immediately coded.
+
+If the user explicitly says an idea should be part of the project, treat that as an approved requirement and work toward implementing it.
+
+If the user explicitly says that **everything currently recorded in Brain that is not yet coded should now be worked on**, treat those Brain requirements as active implementation work, prioritizing the current subsystem and preserving dependencies rather than falsely marking everything complete at once.
+
+---
+
 # 1. WHAT THIS PROJECT IS
 
 **Anonymous Bot / Regnum of Regalia (RoR)** is a Discord-backed RPG campaign system with a game-first web application.
@@ -510,342 +560,229 @@ Important endpoints/contracts include:
 
 ### Session start/end
 
-The web Start Session / End Session control is **not supposed to be a fake browser-only toggle**.
-
-The server changes the configured Discord Game channel permissions and publishes the session announcement. If Discord work fails, the browser should report the failure rather than pretending the session changed.
-
-The end-of-session review is optional; failure to post the review must not undo a successful channel lock/session close.
+The web Start Session / End Session control is **not supposed to be a fake browser-only toggle**. It is Discord-backed and changes the real campaign session state.
 
 ---
 
-# 11. REAL-TIME MESSAGE SYSTEM
+# 11. CAMPAIGN STATE / STORAGE
 
-The preferred path is:
+Campaign state is persisted primarily through `anonymous_bot/core/campaign_store.py` and the campaign database.
 
-```text
-Discord / web message
-       ↓
-backend bridge
-       ↓
-SSE event
-       ↓
-connected browsers
-       ↓
-append recent message locally
-```
+The web world state is persisted through the web state helpers and `campaign_data/web_world_state.json`.
 
-SSE event types include the concepts of:
+Backups are part of the persistent-state architecture.
 
-- `world_state`
-- `game_message`
-- `general_message`
-- `social_update`
-- audio/state events
-
-Polling is a recovery fallback, not the preferred constant full-refresh mechanism.
-
-### Current performance problem
-
-The website's Discord message shower/reload feels laggy because too much historical material can be involved.
-
-Desired behavior:
-
-- Discord keeps the full history.
-- Website initially shows a sensible recent window.
-- Live messages arrive through SSE.
-- Old history is loaded only when explicitly needed.
-- Do not repeatedly re-download ancient Discord history just because the UI refreshed.
-- Do not feed ancient message archives into every AI request.
+Do not casually reset or regenerate campaign data during feature work.
 
 ---
 
-# 12. CAMPAIGN STATE / DATABASE
+# 12. MEMORY / LORE ARCHITECTURE
 
-`campaign_data/campaign.db` is the persistent campaign store. `core/campaign_store.py` handles initialization/storage/backups.
+Campaign memory and Project Brain are different systems.
 
-`web_world_state.json` stores web/game state such as:
+**Project Brain** describes the software/project itself.
 
-- campaign identity,
-- world threat/danger,
-- region danger,
-- session state,
-- chapter/session history,
-- events,
-- lore connections,
-- emergency state,
-- OOC/DM/group information,
-- player settings,
-- GM messages/notifications,
-- companions,
-- audio assets/active audio,
-- main OST selection,
-- ability catalog,
-- character journals/inbox,
-- economy state,
-- advanced atmosphere/timeline/persona/POV/storybook state.
+**Campaign memory/lore** describes the RPG world, characters, events, Discord history, and campaign knowledge.
 
-The web server uses a world-state lock and atomic temporary-file replacement when saving the JSON state.
+Do not merge these concepts or put runtime player/campaign secrets into Project Brain.
 
-Do not casually edit live SQLite/JSON campaign data from source-code changes. Treat campaign data as runtime state.
+The lore index provides structured entity retrieval while campaign memory provides archived/retrieved context.
 
 ---
 
-# 13. CAMPAIGN MEMORY / LORE SYSTEM
+# 13. AI ARCHITECTURE
 
-There are two different meanings of “memory” in this project:
+AI provider selection/fallback behavior lives in the AI provider modules.
 
-### Runtime campaign memory
+AI should use relevant context rather than dumping the entire campaign database into every request.
 
-`features/memory.py` and `features/server_lore.py` archive Discord/campaign information so the bot can retrieve it later.
+AI-assisted features must respect canon/source-of-truth rules and GM/player privacy boundaries.
 
-It can contain:
-
-- raw Discord messages,
-- lore facts,
-- sessions,
-- structured entities/profiles,
-- relationships,
-- priority sources,
-- suggestions,
-- DM/archive information.
-
-Server lore continuously archives new messages and can perform a background historical backfill after startup.
-
-### Project Brain
-
-`PLAN.md` is **not** campaign memory. It is the developer/AI knowledge layer describing the software, rules, architecture, navigation, and work plan.
-
-Do not feed the entire runtime memory archive to an AI merely because it exists.
+AI suggestions are not automatically authoritative game outcomes unless the surrounding feature explicitly defines them as such.
 
 ---
 
-# 14. AI SYSTEM
+# 14. MUSIC / AUDIO ARCHITECTURE
 
-The project supports multiple AI providers/models through `features/ai_providers.py`, with configuration in `config.py`.
+Audio is a shared bot + website subsystem.
 
-Configured provider families include examples such as:
+### Music
 
-- Gemini
-- Groq
-- Cerebras
-- Mistral
-- SambaNova
-- OpenRouter
-- GitHub Models
-- NVIDIA
-- Hugging Face
-- Chutes
-- Pollinations
-- LLM7
-- local Ollama
+The project has a large shared music collection (roughly 1,500 tracks) with contextual tags such as:
 
-`AI_PROVIDER=auto` allows provider selection/fallback behavior.
-
-The administrator AI channel is separate from normal campaign/player use.
-
-### AI responsibilities
-
-The AI can assist with:
-
-- campaign lore
-- continuity
-- summaries
-- NPCs
-- characters
-- factions
-- locations
-- items
-- mysteries
-- dialogue
-- encounters
-- worldbuilding
-- GM preparation
-- bot/technical questions
-- optional music mood analysis
-
-### AI canon rules
-
-- Clear GM canon is authoritative.
-- A later clear GM correction supersedes an older incorrect answer.
-- Do not turn inference into canon.
-- Do not invent unknown lore, acronyms, abilities, relationships, or motivations.
-- Player corrections may provide evidence but do not override established GM canon.
-- GM jokes/tests/questions/speculation are not automatically canon.
-- GM-only hidden information must never leak to players.
-- Structured profiles are preferred over generic raw-message matches for entity questions.
-- Session-specific questions must use the correct session record.
-- A Discord player and an in-world character are different identities.
-- Dead characters remain dead; replacements are new character instances with their own history.
-
-### Known lore corrections
-
-- Aro is a word meaning Energy, not an acronym.
-- Mother Prana is the original source of Aro.
-- Yellow stones modify the user's Aro to reflect personality; they are not simply generic Aro boosters.
-- Mevrick/Vespa: Mevrick believes Vespa is separate and believes fragments keep Vespa away, but that belief is a coping lie; Mevrick is Vespa.
-
----
-
-# 15. AI CONTEXT / TOKEN BUDGET
-
-The project should minimize unnecessary model context and cost.
-
-The correct context priority is:
-
-```text
-1. Current user request
-2. Current game/session state when relevant
-3. Relevant structured profile/lore
-4. Small recent conversation window
-5. Additional supporting evidence only if needed
-```
-
-Do not send entire archives by default.
-
-The project already has bounded queues/context in several places. Preserve those safeguards while improving them.
-
-A future/ongoing context-budget system should be able to limit:
-
-- recent messages,
-- lore facts,
-- characters/records per section,
-- maximum characters/tokens per section,
-- maximum total AI context,
-- provider/model-specific budgets.
-
-The important goal is **relevance-first truncation**, not simply cutting the newest/oldest text blindly.
-
----
-
-# 16. MUSIC / AUDIO SYSTEM
-
-The bundled server music library is organized into mood/category groups, including:
-
+- `sad`
+- `scary`
 - `action`
 - `calm`
 - `dark`
 - `funny`
 - `main_ost`
-- `sad`
-- `scary`
 
-It lives under `campaign_data/web_audio/` and is indexed by the web backend.
+Music selection is context/tag driven. Music should transition smoothly on mood changes rather than abruptly hard-cutting unless a deliberate effect requires it.
 
-The web audio client supports cross-fading when the active soundtrack changes and has a per-device Music On/Off control.
+### SFX
 
-### Intended music behavior
+SFX uses a local generated/expanded library plus layered event recipes. Existing families include combat, explosions, lasers, magic, fire, ice, lightning, weapons, impacts, movement, teleportation, shields, parries, ground destruction, rubble, time stop/reverse, healing, footsteps, doors, vehicles, environmental sounds, and cinematic effects.
 
-- Main OST should randomly choose from the Main OST pool instead of repeatedly selecting the same track.
-- Main OST should begin on opening as intended by the current product direction, subject to browser autoplay/user-gesture restrictions.
-- AI music/mood detection must happen **only while a real Game session is active**.
-- AI music detection must not continuously react to ordinary General/OOC chat.
-- AI music classification must never block sending a message.
-- Player/NPC theme assignments are separate from the global Main OST.
-- Never silently replace the global Main OST with a character theme.
-- Missing/stale audio files must not remain as dead library records.
+SFX can be layered. A single GM narration event may produce a sequence such as:
+
+```text
+missile launch → whoosh → explosion → ground impact → shockwave → rubble
+```
+
+The exact sequence is selected from detected context and available library assets.
+
+### GM narration is the audio trigger source
+
+The **GM's written story/narration is the authoritative text input for automatic music and SFX detection.** Player messages are not audio triggers.
+
+```text
+GM narration
+      ↓
+context/event + mood detection
+      ↓
+music selection + layered SFX selection
+      ↓
+playback
+```
+
+Example:
+
+`"Zero shot out missiles out his staff, exploding the terra beneath him"`
+
+should detect projectile/missile + explosion + ground destruction/impact context and produce appropriate layered SFX.
+
+Music follows the same principle. For example, GM narration describing an ominous battlefield can move music toward `dark/scary/tension`, while an explicitly narrated battle can move it toward `action/combat`.
+
+The system should understand context and combinations rather than trigger from a single exact keyword.
+
+### Local audio
+
+Local development uses:
+
+- `campaign_data/web_audio/` — full local music library;
+- `campaign_data/web_sfx/` — full local SFX library;
+- `anonymous_bot/local_audio_library.py` — unified runtime registry/scanner.
+
+The local registry should expose all locally available music and SFX to the local website without requiring the binary audio files to be committed to GitHub.
+
+### Cloud audio
+
+The eventual shared/public architecture uses external object storage such as Cloudflare R2/S3-compatible storage.
+
+```text
+Browser
+   ↓
+Audio API/service
+   ↓
+metadata
+   ↓
+cloud object storage/CDN
+```
+
+The browser streams requested tracks/SFX instead of downloading the complete shared library. Storage credentials never belong in frontend code.
+
+The repository should contain code, configuration templates, schemas/metadata where appropriate, and Brain—not the 1,500 shared audio binaries.
+
+### GM audio management
+
+The website should provide a GM-facing audio library manager where authorized GMs can:
+
+- upload music;
+- upload SFX;
+- assign/edit multiple tags;
+- search/filter by tags;
+- preview audio;
+- edit metadata;
+- delete assets they own/manage;
+- use automatic tag suggestions and approve them.
+
+Music and SFX remain separate logical libraries while sharing common audio-library infrastructure.
+
+### Permission boundary
+
+Audio playback follows the GM narration model: the player does not cause automatic audio playback by merely describing an action. The GM's actual narration is what the detector processes.
+
+The backend must still enforce authenticated campaign/GM permissions for GM-only library management and explicit audio-control endpoints. Frontend button hiding is not sufficient security.
 
 ---
 
-# 17. DANGER / WORLD ATMOSPHERE
+# 15. CLOUD / LOCAL DEVELOPMENT MODEL
 
-Danger is regional/location-specific. The GM can set a region's 0–100 danger level and a GM description.
+Local development must be able to use the complete locally available audio collection without requiring the user to commit those files to GitHub.
 
-The player sees the visual danger effect but not the numeric percentage/explanation.
+Cloud production must reference remote object storage without downloading the complete library to every cloned installation.
 
-The UI uses smooth full-interface danger transitions, including a red danger overlay/tint and enhanced borders/shadows as danger rises.
+The two modes share the same logical audio metadata/selection model:
 
-Current requested improvement: the high/red danger state does not read strongly enough. Improve it without destroying the existing smooth dark-fantasy UI.
+```text
+                 Audio Library
+                /             \
+        LOCAL STORAGE       CLOUD STORAGE
+        web_audio/sfx       R2/S3/CDN
+             ↓                  ↓
+          local URL          remote URL
+                \              /
+                 selection API
+```
 
----
-
-# 18. PLAYER SETTINGS
-
-Player settings are saved explicitly through the web settings endpoint.
-
-Existing settings include behavior such as:
-
-- accent/color preferences,
-- reduced animations,
-- portrait visibility,
-- timestamps,
-- message density/compactness,
-- other client presentation preferences.
-
-Current requested improvement:
-
-- expose the newly introduced UI colors to players,
-- expand useful player configuration,
-- keep explicit Save behavior,
-- do not silently save every temporary control change.
+`START_EVERYTHING.bat` must never download the complete shared audio library merely to start the application.
 
 ---
 
-# 19. UI DESIGN CONTRACT
+# 16. GM / PLAYER PRIVACY AND PERMISSIONS
 
-The current UI direction is considered very good. **Do not redesign it unnecessarily.**
+GM-only UI and data must remain hidden from players.
 
-The visual identity is a dark-fantasy/game interface with dark panels, muted gray UI, red danger/accent treatment, atmospheric backgrounds, and smooth world-state transitions.
+GM authorization is determined server-side using configured GM identity/role information.
 
-Preserve:
+Player actions and player-authored text must not be treated as GM narration for automatic audio playback.
 
-- game-first hierarchy,
-- readable chat,
-- responsive layout,
-- GM/player separation,
-- dark-fantasy presentation,
-- live session indicator,
-- sidebar navigation,
-- audio controls,
-- player settings behavior.
-
-Chat supports lightweight RPG formatting:
-
-- `**word**` → bold.
-- `*word*` → italic when the marker directly touches a letter.
-- spaced markers such as `* word *` stay plain text.
-- escape message text before adding formatting tags.
+Player-authored content can be used by other AI/game systems where explicitly intended, but the automatic audio detector's story input is the GM narration.
 
 ---
 
-# 20. CURRENT BUGS / ACTIVE PLAN
+# 17. WEB UI RULES
 
-These are the user's active priorities and stay here until fixed and verified.
+Current UI direction is game-first and should not be unnecessarily redesigned while implementing backend/audio functionality.
 
-### 1. Main OST
+New controls must have real actions, a clear disabled state, or an explicit unavailable state.
 
-Randomly select a Main OST track from the `main_ost` library instead of repeatedly using the same track. Main OST should start when opening as intended.
+Responsive layouts must preserve usability on desktop and smaller screens.
 
-### 2. Music detection scope
+---
 
-AI music detection must happen **ONLY during live Game sessions**.
+# 18. SERVER-SENT EVENTS / LIVE STATE
 
-### 3. End Session
+Live state should use SSE where available rather than repeatedly reloading large datasets.
 
-Start Session works. End Session currently does not work correctly from the user's perspective. Fix the full Discord-backed end flow.
+Relevant live events include campaign/session changes, messages, audio changes, and other state updates that require immediate UI synchronization.
 
-### 4. Sidebar category collapsing
+---
 
-Category/channel collapse stopped working after the sidebar-hider update. Restore category collapse/expand without breaking the sidebar hider.
+# 19. CURRENT AUDIO IMPLEMENTATION NOTES
 
-### 5. Discord message shower performance
+Verified existing audio foundations include:
 
-The website should not repeatedly reload very old Discord messages. Keep Discord history intact but make the website recent-first + live-event-driven, with targeted old-history loading only when needed.
+- `anonymous_bot/music_service.py` with local/cloud URL behavior and manifest construction;
+- `anonymous_bot/sfx_engine.py` for event detection, starter SFX, and procedural generation;
+- `anonymous_bot/sfx_expansion.py` for expanded generated SFX;
+- `anonymous_bot/sfx_layers.py` for layered recipes;
+- `anonymous_bot/sfx_specials.py` for special SFX behavior;
+- `anonymous_bot/sfx_client.js` for browser-side SFX playback;
+- `anonymous_bot/local_audio_library.py` for unified local registry.
 
-### 6. Game menu Settings
+These files are the foundation for completing the full local hosting and later cloud-library system. Verify source before extending them.
 
-The game menu GUI does not currently expose Settings correctly. Make Settings reachable from the intended game menu/navigation flow.
+---
 
-### 7. Player Settings
+# 20. KNOWN / ACTIVE WORK
 
-Add meaningful configuration for the newer UI colors and other useful player presentation settings while preserving explicit Save behavior.
+The audio system is currently an active development area. The local unified registry exists, but the full local web audio-library manager and complete GM-narration-to-playback integration still need to be implemented and verified.
 
-### 8. Danger meter
+The eventual cloud library/storage/upload system remains to be implemented unless source verification shows otherwise.
 
-Make the high/red danger state visually stronger and clearer while keeping the existing smooth full-UI danger effect and player privacy behavior.
-
-### 9. Enter Game navigation
-
-After the user clicks **Enter Game**, the Game Menu/pre-game page should close and the user should enter the actual Game interface. Do not leave the user stranded on the pre-game menu after successful entry.
+Do not mark these systems implemented merely because their architecture is documented here.
 
 ---
 
@@ -870,6 +807,10 @@ These are mandatory unless the user explicitly requests a behavior change.
 - Do not silently save player settings that are supposed to require Save.
 - Do not introduce unrelated refactors while fixing a targeted bug.
 - Never put secrets in source/docs/hand-offs.
+- **GM narration, not player narration, is the automatic music/SFX story input.**
+- **Do not trigger automatic music/SFX from player-authored action text.**
+- **Local audio mode must not require committing the user's complete audio collection to GitHub.**
+- **Cloud audio mode must not download the complete shared library just to start a cloned installation.**
 
 ---
 
@@ -891,6 +832,17 @@ python -m py_compile anonymous_bot/web_app.py
 When bot modules change, verify the bot starts and Discord command sync completes.
 
 Manually test every changed button/action under the correct player or GM role.
+
+For audio changes, verify:
+
+- GM narration can be analyzed;
+- player text does not trigger automatic audio;
+- music context changes correctly;
+- layered SFX can be selected;
+- local audio URLs resolve;
+- the browser can play the selected local asset;
+- missing assets fail gracefully;
+- the complete local collection is discoverable without committing it to GitHub.
 
 For session changes, verify both browser state and actual Discord Game-channel permissions.
 
@@ -976,11 +928,7 @@ update PLAN.md if architecture/behavior/backlog changed
 commit/push to GitHub
 ```
 
-For AI tools:
-
-> **PLAN.md is the first and primary context. Do not read the whole repository unless the task genuinely requires it.**
-
-If a task concerns a specific feature, open its source file(s) rather than loading unrelated campaign data or historical Discord archives.
+The **BRAIN → CODE rule takes precedence over treating Brain as passive documentation**: if a user-approved requirement is recorded in Brain and remains unimplemented, it is active unfinished work and should be implemented as the relevant subsystem is worked on.
 
 ---
 
@@ -1015,7 +963,7 @@ Only add or expose functionality when the underlying action actually works.
 
 # 27. SOURCE-OF-TRUTH RULE
 
-`PLAN.md` is now the **one real project Brain**.
+`PLAN.md` is the **one real project Brain**.
 
 The former standalone documentation concepts from `README.md`, `AI_README.md`, and `REGRESSION_POLICY.md` have been consolidated into this file.
 
@@ -1158,183 +1106,26 @@ Suggested format:
 **Idea:** ...
 **Why:** ...
 **Impact:** Low / Medium / High
-**Risk:** Low / Medium / High
 **Status:** Suggested
 ```
 
-### Website Ideas integration
+---
 
-The website's Ideas area should eventually display the **same Project Brain Ideas**, not create an independent AI-controlled idea database.
+# 32. UPDATE LOG
 
-The website may let the user explicitly approve, reject, or retain an Idea. Approval must always be a deliberate user action. The AI must never silently promote an Idea through the website.
+- **Current baseline:** Project Brain rules now explicitly require meaningful user/collaborator suggestions and project-direction decisions to be recorded in Brain, while distinguishing optional Ideas from approved implementation requirements.
+- **Current audio work:** GM narration is the authoritative automatic music/SFX input; local unified audio-library work is active; cloud shared audio remains a later implementation stage.
 
 ---
 
-# 32. SINGLE UPDATE LOG / VERSIONING
+# 33. MAINTENANCE
 
-Project Brain uses **one chronological Update Log inside `PLAN.md`**. Do not create a new note file for every update.
+Keep `PLAN.md` concise enough to serve as a routing/context layer.
 
-Each meaningful update should record:
+When a section becomes stale, correct it rather than stacking contradictory notes.
 
-- version;
-- exact timestamp;
-- added/fixed/changed summary;
-- verification notes when useful.
+When source code proves a Brain claim wrong, update the Brain to reality.
 
-### Version policy
+When a user makes a meaningful project decision, record the decision and then implement it when authorized.
 
-- `v1.0` is the initial baseline.
-- Normal meaningful changes increment the minor version: `v1.1`, `v1.2`, `v1.3`, etc.
-- `v2.0` is reserved for a genuinely major update, such as a substantial architecture/system overhaul.
-- Do not jump to `v2.0` merely because many minor versions exist.
-- Trivial edits do not need their own product version unless part of a meaningful update.
-- Never rewrite old history just to make it look cleaner.
-
-The current-state sections describe **what exists now**. The Update Log describes **how it got there**.
-
----
-
-# 33. RECENT USER-REQUESTED ACTIVE WORK — CONSOLIDATED
-
-These requirements remain active until implemented and verified. They are not claims that they are already fixed.
-
-### Main OST
-
-- Randomly select a Main OST track from the Main OST pool rather than looping/repeating the same track.
-- Main OST should begin when the website opens, subject to browser autoplay/user-gesture restrictions.
-- Do not let character/NPC themes silently replace the global Main OST.
-
-### Game-session music detection
-
-- Music/mood detection must run **ONLY during an active Game session**.
-- Ordinary General/OOC activity must not trigger continuous music detection.
-- Music detection must never block normal message sending.
-
-### Session controls
-
-- Start Session currently works from the user's perspective.
-- End Session needs fixing so the full Discord-backed end flow actually closes the session.
-- The website must reflect real Discord success/failure rather than pretending a session changed.
-- End-of-session review failure must not undo a successful session close.
-
-### Sidebar
-
-- Restore category/channel collapse/expand.
-- The regression appeared after the sidebar-hider update.
-- Fix collapse without breaking sidebar hiding.
-
-### Discord message performance
-
-- Discord should retain its complete history.
-- The website should show a sensible recent message window instead of repeatedly reloading ancient history.
-- New messages should arrive through live events/SSE when available.
-- Old history should be loaded only when explicitly needed.
-- Do not repeatedly re-download huge historical message sets on normal refreshes.
-- Do not feed ancient message archives into every AI request.
-
-### Game menu / navigation
-
-- The Game menu GUI should expose Settings correctly.
-- **After clicking Enter Game, the Game Menu/pre-game page should close and the user should enter the actual Game interface.**
-- Do not leave the user stranded on the pre-game menu after successful entry.
-
-### Player Settings
-
-- Player Settings needs more useful configuration.
-- Newly introduced UI colors should be user-configurable.
-- Preserve explicit Save behavior for persistent settings.
-- Temporary control changes must not silently become saved preferences unless intended.
-
-### Danger meter
-
-- The high/red danger state needs stronger, clearer visual communication.
-- Preserve the existing dark-fantasy UI and smooth full-interface transition.
-- Preserve player privacy: players see the danger visual effect, not the numeric percentage/explanation unless that rule is explicitly changed.
-
-### UI direction
-
-- The current UI is considered very good.
-- Do not redesign it unnecessarily while fixing these issues.
-- Prefer focused fixes that preserve the established visual identity and working interactions.
-
----
-
-# 34. HARD AI SAFETY / REGRESSION POLICY
-
-Before changing code:
-
-1. Read the relevant Project Brain section.
-2. Identify the smallest relevant subsystem.
-3. Inspect the smallest relevant source/tests.
-4. Make the smallest safe change that satisfies the request.
-5. Protect secrets and runtime campaign data.
-6. Test the changed behavior and likely regressions.
-7. Synchronize Project Brain with actual code behavior.
-8. Record a meaningful update in the single Update Log.
-
-The AI must not:
-
-- silently add unrelated features;
-- silently redesign working UI;
-- claim a feature works without verification;
-- expose GM-only information to players;
-- expose secrets or credentials;
-- casually modify live campaign databases as part of a code-only change;
-- delete unfinished ADD requests;
-- implement Ideas without explicit approval;
-- treat AI opinions as requirements;
-- recreate README/AI_README/REGRESSION_POLICY as competing sources of truth;
-- overwrite newer user work when a repository conflict is detected.
-
-If a repository/file version conflict occurs, re-fetch the latest version before attempting an overwrite. Never blindly overwrite a newer version.
-
----
-
-# 35. CURRENT LOCAL GIT / AUTO-SYNC NOTE
-
-The user's actual local repository path is:
-
-```text
-C:\Users\maksi\Desktop\anonymous bot\bot
-```
-
-The local `auto-sync.ps1` convenience script pulls `origin/main` approximately every 30 seconds:
-
-```powershell
-while ($true) {
-    Set-Location "C:\Users\maksi\Desktop\anonymous bot\bot"
-    git pull origin main
-    Start-Sleep -Seconds 30
-}
-```
-
-This is **not bot runtime code**. It is a local GitHub → PC synchronization convenience. GitHub changes can therefore appear in the local repository automatically while the script is running. Local changes still require normal Git commit/push behavior to reach GitHub.
-
-Do not treat auto-sync as a substitute for backups, testing, commits, or resolving local working-tree conflicts.
-
----
-
-# 36. UPDATE LOG
-
-## v1.0 — 2026-09-01
-
-### Project Brain consolidation and recent requirements
-
-- Confirmed `PLAN.md` as **Project Brain = PB = P.B. = Plans** and the one real source of truth.
-- Preserved the existing bot/system architecture, Discord command guide, website navigation, security, campaign memory, AI system, music system, danger system, player settings, UI design contract, testing rules, regression rules, and development workflow.
-- Consolidated the former `README.md`, `AI_README.md`, and `REGRESSION_POLICY.md` documentation roles into Project Brain.
-- Added code-to-Brain synchronization so implemented feature changes update the corresponding Brain description to match actual code.
-- Added explicit AI context/token-saving rules.
-- Added the `ADD.md` explicit-user-request work queue with strict failure/partial-completion safety.
-- Added the AI-only `IDEAS` system, including the rule that AI opinions belong in Ideas and are never automatically implemented.
-- Added shared website Ideas integration with explicit user approval.
-- Added the single timestamped versioned Update Log policy and reserved `v2.0` for genuinely major changes.
-- Consolidated the user's active Main OST, music detection, End Session, sidebar, Discord message performance, Game Menu Settings, Enter Game navigation, Player Settings/color customization, danger meter, and UI-preservation requirements.
-- Corrected the documented local repository path to `C:\Users\maksi\Desktop\anonymous bot\bot`.
-- Documented the local GitHub → PC auto-sync as a convenience mechanism rather than bot runtime behavior.
-
-### Safety
-
-- AI must preserve working systems, campaign data, secrets, permissions, GM/player separation, and user-approved scope.
-- AI opinions are suggestions only; explicit user approval is required before implementation.
-- `ADD.md` requests are not cleared unless successfully implemented and verified.
+Never let Project Brain become a second codebase full of fictional claims.
